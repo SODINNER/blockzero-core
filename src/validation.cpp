@@ -3859,9 +3859,11 @@ void ChainstateManager::ReceivedBlockTransactions(const CBlock& block, CBlockInd
 
 static bool CheckBlockHeader(const CBlockHeader& block, BlockValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW = true)
 {
-    // Check proof of work matches claimed amount (Block Zero: RandomX PoW)
-    if (fCheckPOW && !CheckProofOfWork(block, consensusParams))
-        return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "high-hash", "proof of work failed");
+    // Block Zero: the RandomX seed key depends on chain height, so the canonical
+    // proof-of-work hash check happens in ContextualCheckBlockHeader. Here we only
+    // validate that the claimed nBits target is in the valid range.
+    if (fCheckPOW && !DeriveTarget(block.nBits, consensusParams.powLimit))
+        return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "high-hash", "invalid proof of work target");
 
     return true;
 }
@@ -4052,8 +4054,11 @@ void ChainstateManager::GenerateCoinbaseCommitment(CBlock& block, const CBlockIn
 
 bool HasValidProofOfWork(std::span<const CBlockHeader> headers, const Consensus::Params& consensusParams)
 {
+    // Block Zero: full RandomX PoW is verified contextually (height-dependent seed
+    // key). For this cheap pre-commitment anti-DoS filter we validate the nBits
+    // target range only.
     return std::ranges::all_of(headers,
-                               [&](const auto& header) { return CheckProofOfWork(header, consensusParams); });
+                               [&](const auto& header) { return DeriveTarget(header.nBits, consensusParams.powLimit).has_value(); });
 }
 
 bool IsBlockMutated(const CBlock& block, bool check_witness_root)
@@ -4109,7 +4114,7 @@ arith_uint256 CalculateClaimedHeadersWork(std::span<const CBlockHeader> headers)
  *  v0.12 and v0.15 (when no additional protection was in place) whereby an attacker could unboundedly
  *  grow our in-memory block index. See https://bitcoincore.org/en/2024/07/03/disclose-header-spam.
  */
-static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidationState& state, BlockManager& blockman, const ChainstateManager& chainman, const CBlockIndex* pindexPrev) EXCLUSIVE_LOCKS_REQUIRED(::cs_main)
+static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidationState& state, BlockManager& blockman, const ChainstateManager& chainman, const CBlockIndex* pindexPrev, bool fCheckPOW = true) EXCLUSIVE_LOCKS_REQUIRED(::cs_main)
 {
     AssertLockHeld(::cs_main);
     assert(pindexPrev != nullptr);
@@ -4119,6 +4124,17 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidatio
     const Consensus::Params& consensusParams = chainman.GetConsensus();
     if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
         return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "bad-diffbits", "incorrect proof of work");
+
+    // Block Zero: authoritative RandomX proof-of-work check using the height-based
+    // seed key. This is the canonical PoW validity check (the context-free
+    // CheckBlockHeader only validates the nBits target range, since the seed key
+    // depends on chain height). Skipped when fCheckPOW is false (e.g. validating
+    // an unmined block template via TestBlockValidity).
+    if (fCheckPOW) {
+        const uint256 rx_key = GetRandomXKey(pindexPrev, nHeight, consensusParams);
+        if (!CheckProofOfWork(block, rx_key, consensusParams))
+            return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "high-hash", "proof of work failed");
+    }
 
     // Check timestamp against prev
     if (block.GetBlockTime() <= pindexPrev->GetMedianTimePast())
@@ -4534,7 +4550,7 @@ BlockValidationState TestBlockValidity(
      * - do run ContextualCheckBlock()
      */
 
-    if (!ContextualCheckBlockHeader(block, state, chainstate.m_blockman, chainstate.m_chainman, tip)) {
+    if (!ContextualCheckBlockHeader(block, state, chainstate.m_blockman, chainstate.m_chainman, tip, /*fCheckPOW=*/check_pow)) {
         if (state.IsValid()) NONFATAL_UNREACHABLE();
         return state;
     }

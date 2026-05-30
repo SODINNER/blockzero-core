@@ -145,7 +145,9 @@ bool BlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, s
                 pindexNew->nStatus        = diskindex.nStatus;
                 pindexNew->nTx            = diskindex.nTx;
 
-                if (!CheckProofOfWork(pindexNew->GetBlockHeader(), consensusParams)) {
+                // Block Zero: full RandomX PoW is enforced at header/block acceptance
+                // (height-dependent seed key). On index load we validate the target range.
+                if (!DeriveTarget(pindexNew->nBits, consensusParams.powLimit)) {
                     LogError("%s: CheckProofOfWork failed: %s\n", __func__, pindexNew->ToString());
                     return false;
                 }
@@ -1053,8 +1055,9 @@ bool BlockManager::ReadBlock(CBlock& block, const FlatFilePos& pos, const std::o
 
     const auto block_hash{block.GetHash()};
 
-    // Check the header (Block Zero: RandomX PoW)
-    if (!CheckProofOfWork(block, GetConsensus())) {
+    // Check the header. Block Zero: full RandomX PoW is enforced at acceptance
+    // (height-dependent seed key); here we validate the nBits target range.
+    if (!DeriveTarget(block.nBits, GetConsensus().powLimit)) {
         LogError("Errors in block header at %s while reading block", pos.ToString());
         return false;
     }

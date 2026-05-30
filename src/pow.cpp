@@ -145,19 +145,48 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
     return CheckProofOfWorkImpl(hash, nBits, params);
 }
 
-uint256 GetBlockPoWHash(const CBlockHeader& block)
+uint256 GetBlockPoWHash(const CBlockHeader& block, const uint256& key)
 {
-    // Serialize the 80-byte block header and hash it with RandomX using the
-    // bootstrap key. Block identity (block.GetHash()) stays double-SHA256.
+    // Serialize the 80-byte block header and hash it with RandomX using the given
+    // seed key. Block identity (block.GetHash()) stays double-SHA256.
     DataStream ss;
     ss << block;
-    return RandomXComputeHash(RandomXBootstrapKey(), std::span<const unsigned char>{reinterpret_cast<const unsigned char*>(ss.data()), ss.size()});
+    return RandomXComputeHash(key, std::span<const unsigned char>{reinterpret_cast<const unsigned char*>(ss.data()), ss.size()});
+}
+
+bool CheckProofOfWork(const CBlockHeader& block, const uint256& key, const Consensus::Params& params)
+{
+    if (EnableFuzzDeterminism()) return (block.GetHash().data()[31] & 0x80) == 0;
+    return CheckProofOfWorkImpl(GetBlockPoWHash(block, key), block.nBits, params);
+}
+
+uint256 GetBlockPoWHash(const CBlockHeader& block)
+{
+    return GetBlockPoWHash(block, RandomXBootstrapKey());
 }
 
 bool CheckProofOfWork(const CBlockHeader& block, const Consensus::Params& params)
 {
-    if (EnableFuzzDeterminism()) return (block.GetHash().data()[31] & 0x80) == 0;
-    return CheckProofOfWorkImpl(GetBlockPoWHash(block), block.nBits, params);
+    return CheckProofOfWork(block, RandomXBootstrapKey(), params);
+}
+
+uint256 GetRandomXKey(const CBlockIndex* pindexPrev, int nHeight, const Consensus::Params& params)
+{
+    const int epoch = params.randomx_epoch_blocks;
+    const int lag = params.randomx_epoch_lag;
+
+    // Early chain (and safety fallback): use the deterministic bootstrap key.
+    if (pindexPrev == nullptr || nHeight <= epoch + lag) {
+        return RandomXBootstrapKey();
+    }
+
+    // epoch must be a power of two for this mask to be correct.
+    const int seed_height = (nHeight - lag - 1) & ~(epoch - 1);
+    const CBlockIndex* seed = pindexPrev->GetAncestor(seed_height);
+    if (seed == nullptr) {
+        return RandomXBootstrapKey();
+    }
+    return seed->GetBlockHash();
 }
 
 std::optional<arith_uint256> DeriveTarget(unsigned int nBits, const uint256 pow_limit)

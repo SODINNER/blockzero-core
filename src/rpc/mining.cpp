@@ -139,7 +139,16 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock&& block, uint64_t&
     block_out.reset();
     block.hashMerkleRoot = BlockMerkleRoot(block);
 
-    while (max_tries > 0 && block.nNonce < std::numeric_limits<uint32_t>::max() && !CheckProofOfWork(block, chainman.GetConsensus()) && !chainman.m_interrupt) {
+    // Block Zero: grind against the RandomX hash using the height-based seed key.
+    uint256 rx_key;
+    {
+        LOCK(cs_main);
+        const CBlockIndex* pindexPrev = chainman.m_blockman.LookupBlockIndex(block.hashPrevBlock);
+        const int nHeight = (pindexPrev ? pindexPrev->nHeight : 0) + 1;
+        rx_key = GetRandomXKey(pindexPrev, nHeight, chainman.GetConsensus());
+    }
+
+    while (max_tries > 0 && block.nNonce < std::numeric_limits<uint32_t>::max() && !CheckProofOfWork(block, rx_key, chainman.GetConsensus()) && !chainman.m_interrupt) {
         ++block.nNonce;
         --max_tries;
     }

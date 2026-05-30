@@ -34,17 +34,29 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
 bool CheckProofOfWorkImpl(uint256 hash, unsigned int nBits, const Consensus::Params&);
 
 /**
- * Block Zero: compute the RandomX proof-of-work hash of a block header.
+ * Block Zero: compute the RandomX proof-of-work hash of a block header using the
+ * given RandomX seed key.
  *
  * This is distinct from the block's identity hash (CBlockHeader::GetHash(),
  * which remains double-SHA256). Proof-of-work validity is checked against this
- * RandomX hash. For now a fixed bootstrap key is used; height-based seed key
- * rotation is added in a later step.
+ * RandomX hash.
  */
-uint256 GetBlockPoWHash(const CBlockHeader& block);
+uint256 GetBlockPoWHash(const CBlockHeader& block, const uint256& key);
 
-/** Check whether a block header satisfies the RandomX proof-of-work requirement. */
+/** Check whether a block header satisfies the RandomX proof-of-work requirement with the given key. */
+bool CheckProofOfWork(const CBlockHeader& block, const uint256& key, const Consensus::Params&);
+
+/** Convenience: compute/check the RandomX PoW hash using the fixed bootstrap key. */
+uint256 GetBlockPoWHash(const CBlockHeader& block);
 bool CheckProofOfWork(const CBlockHeader& block, const Consensus::Params&);
+
+/**
+ * Block Zero: determine the RandomX seed key for the block at nHeight, given its
+ * predecessor. The key rotates every consensus.randomx_epoch_blocks with a lag of
+ * consensus.randomx_epoch_lag; below the first epoch the bootstrap key is used.
+ * The key is a past block hash and is therefore not miner-selectable.
+ */
+uint256 GetRandomXKey(const CBlockIndex* pindexPrev, int nHeight, const Consensus::Params&);
 
 /**
  * Return false if the proof-of-work requirement specified by new_nbits at a
