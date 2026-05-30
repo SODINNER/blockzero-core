@@ -95,9 +95,9 @@ public:
         consensus.CSVHeight = 419328; // 000000000000000004a1b34462cb8aeebd5799177f7a29cf28f2d1961716b5b5
         consensus.SegwitHeight = 481824; // 0000000000000000001c8018d9cb3b742ef25114f27563e3fc4a1902167f9893
         consensus.MinBIP9WarningHeight = 483840; // segwit activation height + miner confirmation window
-        // Block Zero: RandomX-appropriate difficulty floor (matches genesis nBits 0x1f00ffff).
-        consensus.powLimit = uint256{"0000ffff00000000000000000000000000000000000000000000000000000000"};
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
+        // Block Zero: RandomX-appropriate difficulty floor (matches genesis nBits 0x1e3fffff).
+        consensus.powLimit = uint256{"00003fffff000000000000000000000000000000000000000000000000000000"};
+        consensus.nPowTargetTimespan = 12 * 60 * 60; // 12 hours (72-block retarget)
         consensus.nPowTargetSpacing = 10 * 60;
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.enforce_BIP94 = false;
@@ -139,10 +139,10 @@ public:
         {
             const char* bz_genesis_msg = "Block Zero 30/May/2026 fair launch no premine no ICO";
             const CScript bz_genesis_script = CScript() << "04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"_hex << OP_CHECKSIG;
-            genesis = CreateGenesisBlock(bz_genesis_msg, bz_genesis_script, 1748563200, 39286, 0x1f00ffff, 1, 50 * COIN);
+            genesis = CreateGenesisBlock(bz_genesis_msg, bz_genesis_script, 1748563200, 425526, 0x1e3fffff, 1, 50 * COIN);
         }
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"008f2f0abb16ab91859b344e3bf98b41e681990e3819eaf1c88e8cd607ff5d6b"});
+        assert(consensus.hashGenesisBlock == uint256{"99b4f6f2a0821c6bdb7794403700424cc8f8c34d15cf79846fa4826134a59eba"});
         assert(genesis.hashMerkleRoot == uint256{"49cfbb32ead8daad200c539ba73248d697ea1bab60169304e1e190f4f96524bd"});
 
         // Note that of those which support the service bits prefix, most only support a subset of
@@ -229,9 +229,9 @@ public:
         consensus.CSVHeight = 770112; // 00000000025e930139bac5c6c31a403776da130831ab85be56578f3fa75369bb
         consensus.SegwitHeight = 834624; // 00000000002b980fcd729daaa248fd9316a5200e9b367f4ff2c42453e84201ca
         consensus.MinBIP9WarningHeight = 836640; // segwit activation height + miner confirmation window
-        // Block Zero: RandomX-appropriate difficulty floor (matches genesis nBits 0x1f00ffff).
-        consensus.powLimit = uint256{"0000ffff00000000000000000000000000000000000000000000000000000000"};
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
+        // Block Zero: RandomX-appropriate difficulty floor (matches genesis nBits 0x1e3fffff).
+        consensus.powLimit = uint256{"00003fffff000000000000000000000000000000000000000000000000000000"};
+        consensus.nPowTargetTimespan = 12 * 60 * 60; // 12 hours (72-block retarget)
         consensus.nPowTargetSpacing = 10 * 60;
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.enforce_BIP94 = false;
@@ -268,10 +268,10 @@ public:
         {
             const char* bz_genesis_msg = "Block Zero 30/May/2026 fair launch no premine no ICO";
             const CScript bz_genesis_script = CScript() << "04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"_hex << OP_CHECKSIG;
-            genesis = CreateGenesisBlock(bz_genesis_msg, bz_genesis_script, 1748563201, 5462, 0x1f00ffff, 1, 50 * COIN);
+            genesis = CreateGenesisBlock(bz_genesis_msg, bz_genesis_script, 1748563201, 175029, 0x1e3fffff, 1, 50 * COIN);
         }
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"2ec1ae8dad86536fe1ff42333851cd92a5025b460b6bf11bfbe3abbc419d785a"});
+        assert(consensus.hashGenesisBlock == uint256{"f58130b19cdf3d03b22c5a67a6509b00750b2d8975ee9d889d5b613aaae5296e"});
         assert(genesis.hashMerkleRoot == uint256{"49cfbb32ead8daad200c539ba73248d697ea1bab60169304e1e190f4f96524bd"});
 
         vFixedSeeds.clear();
