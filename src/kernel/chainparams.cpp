@@ -631,10 +631,15 @@ public:
             consensus.vDeployments[deployment_pos].min_activation_height = version_bits_params.min_activation_height;
         }
 
-        genesis = CreateGenesisBlock(1296688602, 2, 0x207fffff, 1, 50 * COIN);
+        // Block Zero regtest genesis (RandomX proof-of-work).
+        {
+            const char* bz_genesis_msg = "Block Zero 30/May/2026 fair launch no premine no ICO";
+            const CScript bz_genesis_script = CScript() << "04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"_hex << OP_CHECKSIG;
+            genesis = CreateGenesisBlock(bz_genesis_msg, bz_genesis_script, 1748563200, 0, 0x207fffff, 1, 50 * COIN);
+        }
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"});
-        assert(genesis.hashMerkleRoot == uint256{"4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"});
+        assert(consensus.hashGenesisBlock == uint256{"73c34a3024168f08a73380613563165c00a39e06e84a8e3e4997fd32e0ba4b39"});
+        assert(genesis.hashMerkleRoot == uint256{"49cfbb32ead8daad200c539ba73248d697ea1bab60169304e1e190f4f96524bd"});
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();

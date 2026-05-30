@@ -155,6 +155,20 @@ target_link_libraries(bitcoin_common
 
 include(InstallBinaryComponent)
 
+# Block Zero: developer tool to mine genesis blocks under RandomX.
+add_executable(bz-genesis-miner bz_genesis_miner.cpp)
+target_link_libraries(bz-genesis-miner
+  core_interface
+  bitcoin_common
+  bitcoin_consensus
+  bitcoin_util
+  bitcoin_crypto
+  randomx
+  secp256k1
+  univalue
+  Boost::headers
+)
+
 if(ENABLE_WALLET)
   add_subdirectory(wallet)
 
