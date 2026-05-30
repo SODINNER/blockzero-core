@@ -42,6 +42,7 @@ add_library(bitcoinkernel
   ../policy/settings.cpp
   ../policy/truc_policy.cpp
   ../pow.cpp
+  ../pow_randomx.cpp
   ../primitives/block.cpp
   ../primitives/transaction.cpp
   ../pubkey.cpp
@@ -82,6 +83,7 @@ add_library(bitcoinkernel
   $<TARGET_OBJECTS:bitcoin_crypto>
   $<TARGET_OBJECTS:leveldb>
   $<TARGET_OBJECTS:crc32c>
+  $<TARGET_OBJECTS:randomx>
 )
 
 # Compiler warnings that apply only to the kernel and its dependencies.

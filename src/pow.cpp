@@ -7,7 +7,9 @@
 
 #include <arith_uint256.h>
 #include <chain.h>
+#include <pow_randomx.h>
 #include <primitives/block.h>
+#include <streams.h>
 #include <uint256.h>
 #include <util/check.h>
 
@@ -141,6 +143,21 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
 {
     if (EnableFuzzDeterminism()) return (hash.data()[31] & 0x80) == 0;
     return CheckProofOfWorkImpl(hash, nBits, params);
+}
+
+uint256 GetBlockPoWHash(const CBlockHeader& block)
+{
+    // Serialize the 80-byte block header and hash it with RandomX using the
+    // bootstrap key. Block identity (block.GetHash()) stays double-SHA256.
+    DataStream ss;
+    ss << block;
+    return RandomXComputeHash(RandomXBootstrapKey(), std::span<const unsigned char>{reinterpret_cast<const unsigned char*>(ss.data()), ss.size()});
+}
+
+bool CheckProofOfWork(const CBlockHeader& block, const Consensus::Params& params)
+{
+    if (EnableFuzzDeterminism()) return (block.GetHash().data()[31] & 0x80) == 0;
+    return CheckProofOfWorkImpl(GetBlockPoWHash(block), block.nBits, params);
 }
 
 std::optional<arith_uint256> DeriveTarget(unsigned int nBits, const uint256 pow_limit)

@@ -34,6 +34,19 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
 bool CheckProofOfWorkImpl(uint256 hash, unsigned int nBits, const Consensus::Params&);
 
 /**
+ * Block Zero: compute the RandomX proof-of-work hash of a block header.
+ *
+ * This is distinct from the block's identity hash (CBlockHeader::GetHash(),
+ * which remains double-SHA256). Proof-of-work validity is checked against this
+ * RandomX hash. For now a fixed bootstrap key is used; height-based seed key
+ * rotation is added in a later step.
+ */
+uint256 GetBlockPoWHash(const CBlockHeader& block);
+
+/** Check whether a block header satisfies the RandomX proof-of-work requirement. */
+bool CheckProofOfWork(const CBlockHeader& block, const Consensus::Params&);
+
+/**
  * Return false if the proof-of-work requirement specified by new_nbits at a
  * given height is not possible, given the proof-of-work on the prior block as
  * specified by old_nbits.

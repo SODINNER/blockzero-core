@@ -126,6 +126,7 @@ add_library(bitcoin_common STATIC EXCLUDE_FROM_ALL
   policy/feerate.cpp
   policy/policy.cpp
   pow.cpp
+  pow_randomx.cpp
   protocol.cpp
   psbt.cpp
   rpc/rawtransaction_util.cpp
@@ -144,6 +145,7 @@ target_link_libraries(bitcoin_common
     core_interface
     bitcoin_consensus
     bitcoin_util
+    randomx
     univalue
     secp256k1
     Boost::headers
