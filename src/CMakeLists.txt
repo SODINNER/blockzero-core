@@ -54,6 +54,9 @@ add_dependencies(bitcoin_clientversion generate_build_info)
 
 add_subdirectory(crypto)
 add_subdirectory(util)
+# Block Zero: RandomX proof-of-work library (CPU-friendly, ASIC-resistant).
+# Built as a static library; benchmark/test executables are excluded.
+add_subdirectory(randomx EXCLUDE_FROM_ALL)
 if(ENABLE_IPC)
   add_subdirectory(ipc)
 endif()
@@ -277,6 +280,7 @@ target_link_libraries(bitcoin_node
     core_interface
     bitcoin_common
     bitcoin_util
+    randomx
     $<TARGET_NAME_IF_EXISTS:bitcoin_zmq>
     leveldb
     minisketch
