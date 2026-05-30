@@ -167,6 +167,7 @@ target_link_libraries(bz-genesis-miner
   secp256k1
   univalue
   Boost::headers
+  Threads::Threads
 )
 
 if(ENABLE_WALLET)

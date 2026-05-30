@@ -19,9 +19,12 @@
 #include <uint256.h>
 #include <util/strencodings.h>
 
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include <thread>
+#include <vector>
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
 {
@@ -51,34 +54,58 @@ static void MineOne(const char* net, const char* pszTimestamp, uint32_t nTime, u
     auto target = DeriveTarget(nBits, uint256{"7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"});
     if (!target) { std::printf("[%s] invalid nBits\n", net); return; }
 
-    std::printf("[%s] mining (nBits=0x%08x, nTime=%u) ...\n", net, nBits, nTime);
+    unsigned nthreads = std::thread::hardware_concurrency();
+    if (nthreads == 0) nthreads = 4;
+
+    std::printf("[%s] mining (nBits=0x%08x, nTime=%u) with %u threads ...\n", net, nBits, nTime, nthreads);
     std::fflush(stdout);
 
-    for (uint64_t nonce = 0; nonce <= 0xffffffffULL; ++nonce) {
-        CBlock genesis = CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTime, (uint32_t)nonce, nBits, 1, 50 * COIN);
-        uint256 pow = GetBlockPoWHash(genesis);
-        if (UintToArith256(pow) <= *target) {
-            std::printf("[%s] FOUND\n", net);
-            std::printf("  nNonce        = %u\n", (uint32_t)nonce);
-            std::printf("  nTime         = %u\n", nTime);
-            std::printf("  nBits         = 0x%08x\n", nBits);
-            std::printf("  powHash       = %s\n", pow.GetHex().c_str());
-            std::printf("  hashGenesis   = %s\n", genesis.GetHash().GetHex().c_str());
-            std::printf("  hashMerkleRoot= %s\n", genesis.hashMerkleRoot.GetHex().c_str());
-            std::fflush(stdout);
-            return;
-        }
-        if ((nonce & 0xffff) == 0 && nonce > 0) { std::printf("[%s] ... nonce=%llu\n", net, (unsigned long long)nonce); std::fflush(stdout); }
+    std::atomic<bool> found{false};
+    std::atomic<uint32_t> found_nonce{0};
+
+    std::vector<std::thread> threads;
+    for (unsigned t = 0; t < nthreads; ++t) {
+        threads.emplace_back([&, t]() {
+            const arith_uint256 tgt = *target;
+            for (uint64_t nonce = t; nonce <= 0xffffffffULL; nonce += nthreads) {
+                if (found.load(std::memory_order_relaxed)) return;
+                CBlock g = CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTime, (uint32_t)nonce, nBits, 1, 50 * COIN);
+                if (UintToArith256(GetBlockPoWHash(g)) <= tgt) {
+                    bool expected = false;
+                    if (found.compare_exchange_strong(expected, true)) {
+                        found_nonce.store((uint32_t)nonce);
+                    }
+                    return;
+                }
+            }
+        });
     }
-    std::printf("[%s] no nonce found in range\n", net);
+    for (auto& th : threads) th.join();
+
+    if (!found.load()) { std::printf("[%s] no nonce found in range\n", net); return; }
+
+    CBlock genesis = CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTime, found_nonce.load(), nBits, 1, 50 * COIN);
+    uint256 pow = GetBlockPoWHash(genesis);
+    std::printf("[%s] FOUND\n", net);
+    std::printf("  nNonce        = %u\n", found_nonce.load());
+    std::printf("  nTime         = %u\n", nTime);
+    std::printf("  nBits         = 0x%08x\n", nBits);
+    std::printf("  powHash       = %s\n", pow.GetHex().c_str());
+    std::printf("  hashGenesis   = %s\n", genesis.GetHash().GetHex().c_str());
+    std::printf("  hashMerkleRoot= %s\n", genesis.hashMerkleRoot.GetHex().c_str());
+    std::fflush(stdout);
 }
 
 int main()
 {
     const char* msg = "Block Zero 30/May/2026 fair launch no premine no ICO";
 
-    // regtest: easiest target, mines almost instantly.
-    MineOne("regtest", msg, 1748563200, 0x207fffff);
+    // Distinct nTime per network so each genesis block is unique.
+    // (regtest genesis is already fixed at nNonce=0, nTime=1748563200.)
+
+    // testnet and mainnet: RandomX-appropriate floor (0x1f00ffff).
+    MineOne("testnet", msg, 1748563201, 0x1f00ffff);
+    MineOne("mainnet", msg, 1748563200, 0x1f00ffff);
 
     return 0;
 }
