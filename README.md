@@ -1,64 +1,142 @@
 # BLOCK ZERO
 
-**Modern BTC code. A second chance at Genesis.**
+### Modern Bitcoin code. A second chance at Genesis.
 
-CPU-mineable · Fair launch · Proof-of-work
+**CPU-mineable · Fair launch · Pure proof-of-work · No presale · No insiders · No premine**
 
-No presale. No insiders. No premine.
+> Block Zero rebuilds the moment Bitcoin began — when anyone could open a laptop,
+> point it at the network, and mine real blocks. Same battle-tested Bitcoin Core
+> engine, but with a proof-of-work that keeps ASIC and GPU farms out, so the
+> people mining are people, not warehouses.
 
 ---
 
-## blockzero-core
+## What Block Zero is
 
-The reference node for Block Zero — an independent chain built on Bitcoin Core v31, with RandomX proof-of-work so ordinary CPUs can mine from block one.
+Block Zero is an **independent layer-1 blockchain** built on the **Bitcoin Core v31**
+codebase. It keeps everything that makes Bitcoin solid — the UTXO model, script,
+SegWit, Taproot, the wallet, the P2P network — and changes exactly one thing that
+matters for fairness: **how blocks are mined**.
 
-This is not Bitcoin. It is a fresh chain with its own genesis, its own rules, and a launch model that puts miners first.
+Instead of SHA-256 (which today only specialized ASIC machines can mine
+profitably), Block Zero uses **RandomX** proof-of-work — the same CPU-optimized
+algorithm used by Monero. RandomX is built to run fast on a normal computer's CPU
+and *badly* on ASICs and GPUs. The result:
 
-### What makes it different
+- **Your everyday PC is competitive again.** No mining rig, no datacenter.
+- **No head start for anyone.** The chain was launched and mined openly from block 1 — no premine, no presale, no team allocation.
+- **It feels like 2009.** Download the node, start mining, earn blocks. The way Bitcoin worked before industrial mining took over.
 
-| | Block Zero | Typical altcoin |
+This is **not** Bitcoin and not a token on someone else's chain. It is a fresh
+chain with its own genesis block, its own rules, and its own coin: **BLOZ**.
+
+---
+
+## Why ASICs (and GPU farms) have no chance
+
+| | SHA-256 (Bitcoin today) | RandomX (Block Zero) |
 |---|---|---|
-| **Launch** | Fair — mine from genesis | Presale, team allocation, VC |
-| **Mining** | RandomX on your CPU | ASIC farms or GPU pools |
-| **Codebase** | Modern Bitcoin Core v31 | Fork-and-forget spaghetti |
-| **Insiders** | None | Founders, advisors, VCs |
+| Best hardware | Purpose-built **ASIC** machines | A normal **CPU** |
+| Who can mine | Industrial farms | Anyone with a computer |
+| ASIC advantage | Enormous | Practically none — RandomX needs a CPU's large cache, fast memory and general-purpose instructions, which ASICs can't cheaply replicate |
+| GPU advantage | High | Low — RandomX is memory-hard and branch-heavy, hostile to GPUs |
 
-### Start mining (testnet)
+RandomX continuously executes randomized programs that depend on a multi-megabyte
+dataset in fast memory. A general-purpose CPU does this naturally; building an ASIC
+for it would essentially mean building a CPU. **That is the whole point** —
+mining stays in the hands of ordinary people.
 
-Prebuilt binaries: **[Releases](https://github.com/Rexemre/blockzero-core/releases)** (latest: `v0.1.0-testnet.5`)
+---
 
-One-click setup: [blockzero-ops/scripts/testnet](https://github.com/Rexemre/blockzero-ops/tree/main/scripts/testnet)
+## Chain parameters
 
-Full docs: [blockzero-docs](https://github.com/Rexemre/blockzero-docs)
+| Property | Value |
+|---|---|
+| **Consensus engine** | Bitcoin Core v31 (UTXO, SegWit, Taproot) |
+| **Proof-of-work** | RandomX (CPU-friendly, ASIC/GPU-resistant) |
+| **Block time** | 10 minutes (target) |
+| **Difficulty retarget** | every **72 blocks** (~12 hours) — adapts quickly to hashrate |
+| **Initial block reward** | **50 BLOZ** |
+| **Halving** | every **210,000 blocks** (~4 years) |
+| **Maximum supply** | **21,000,000 BLOZ** |
+| **Coinbase maturity** | 100 blocks |
+| **Smallest unit** | 1 BLOZ = 100,000,000 base units (8 decimals) |
+| **Ticker** | **BLOZ** (mainnet) · **TBLOZ** (testnet) |
+| **Address prefix (bech32)** | `bz` (mainnet) · `tbz` (testnet) |
+| **P2P port** | 8210 (mainnet) · 18210 (testnet) |
+| **RPC port** | 8211 (mainnet) · 18211 (testnet) |
 
-### Build from source
+### Emission
+
+Block Zero mirrors Bitcoin's disciplined, predictable issuance: a fixed
+**21,000,000 BLOZ** cap, reached through halvings. Every 210,000 blocks the block
+reward halves (50 → 25 → 12.5 → …), so the supply curve and scarcity behave exactly
+like Bitcoin's — only the mining hardware is different.
+
+### Genesis
+
+- **Mainnet genesis:** `99b4f6f2a0821c6bdb7794403700424cc8f8c34d15cf79846fa4826134a59eba`
+- **Testnet genesis:** `f58130b19cdf3d03b22c5a67a6509b00750b2d8975ee9d889d5b613aaae5296e`
+
+---
+
+## Start mining (testnet)
+
+Mine **TBLOZ** on the live testnet — your CPU, your blocks.
+
+**Prebuilt binaries:** [Releases](https://github.com/Rexemre/blockzero-core/releases)
+(node `bitcoind`, CLI `bitcoin-cli`, and the GUI wallet `bitcoin-qt`)
+
+**One-click setup (Windows):**
+
+```powershell
+git clone https://github.com/Rexemre/blockzero-ops.git
+cd blockzero-ops\scripts\testnet
+.\install-windows.ps1
+.\mine-testnet.ps1 -Status   # sync to the public seed first
+.\mine-testnet.ps1           # mine
+```
+
+**Public seed:** `217.160.46.61:18210` · **Block explorer:** https://explorer.bloz.org
+
+Full guide: [blockzero-docs/quickstart-mining.md](https://github.com/Rexemre/blockzero-docs/blob/main/quickstart-mining.md)
+
+---
+
+## Build from source
 
 ```bash
 git clone --recurse-submodules https://github.com/Rexemre/blockzero-core.git
 cd blockzero-core
-cmake -B build -DBUILD_GUI=OFF
-cmake --build build -j$(nproc)
+cmake -B build
+cmake --build build -j$(nproc) --target bitcoind bitcoin-cli bitcoin-qt
 ```
 
 See [doc/build-unix.md](doc/build-unix.md) and [doc/build-windows-msvc.md](doc/build-windows-msvc.md).
 
-### Repositories
+---
+
+## Repositories
 
 | Repo | Purpose |
 |------|---------|
-| **blockzero-core** (here) | Node, consensus, RandomX PoW |
+| **blockzero-core** (here) | Node, consensus, RandomX proof-of-work |
 | [blockzero-docs](https://github.com/Rexemre/blockzero-docs) | Guides, specs, status |
-| [blockzero-ops](https://github.com/Rexemre/blockzero-ops) | Mining scripts, seed nodes |
+| [blockzero-ops](https://github.com/Rexemre/blockzero-ops) | Mining scripts, seed node, explorer |
 | [blockzero-wallet](https://github.com/Rexemre/blockzero-wallet) | Wallet (in development) |
 
-### Status
+---
 
-- **Testnet live** — genesis mined, public seed at `217.160.46.61:18210`, block 1+ mineable
-- **Mainnet** — genesis defined, launch pending
-- Upstream baseline: Bitcoin Core v31.0 ([UPSTREAM.md](UPSTREAM.md))
+## Status
 
-Ticker: **BLOZ** (mainnet) · **TBLOZ** (testnet)
+- **Testnet — live.** Genesis mined, always-on public seed at `217.160.46.61:18210`, block explorer at [explorer.bloz.org](https://explorer.bloz.org), blocks mineable now.
+- **Mainnet — genesis defined, launch pending.**
+- Upstream baseline: Bitcoin Core v31.0 — see [UPSTREAM.md](UPSTREAM.md).
 
-### Disclaimer
+---
 
-Block Zero is open-source software. BLOZ/TBLOZ carry no promised value, liquidity or return. You participate at your own risk.
+## Disclaimer
+
+Block Zero is free, open-source software. BLOZ and TBLOZ are experimental coins
+that carry **no** promised value, liquidity or return. Nothing here is financial
+advice. You run the software and participate entirely at your own risk.
