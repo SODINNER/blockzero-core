@@ -19,9 +19,17 @@
 #include <chainparams.h>
 
 /** Display unit for the active chain (BLOZ mainnet, TBLOZ testnet/regtest). */
-inline std::string CurrencyUnit() { return Params().CurrencyUnit(); }
+inline std::string CurrencyUnit()
+{
+    if (IsChainParamsSet()) return Params().CurrencyUnit();
+    return "BLOZ";
+}
 /** Smallest on-chain unit name for fee-rate strings (sat / tsat). */
-inline std::string CurrencyAtom() { return Params().CurrencyAtom(); }
+inline std::string CurrencyAtom()
+{
+    if (IsChainParamsSet()) return Params().CurrencyAtom();
+    return "sat";
+}
 
 #define CURRENCY_UNIT CurrencyUnit()
 #define CURRENCY_ATOM CurrencyAtom()

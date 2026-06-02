@@ -114,6 +114,11 @@ const CChainParams &Params() {
     return *globalChainParams;
 }
 
+bool IsChainParamsSet()
+{
+    return static_cast<bool>(globalChainParams);
+}
+
 std::unique_ptr<const CChainParams> CreateChainParams(const ArgsManager& args, const ChainType chain)
 {
     switch (chain) {
