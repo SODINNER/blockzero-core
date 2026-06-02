@@ -112,7 +112,8 @@ jobs:
           sed -i '1s/^/set(ENV{CMAKE_POLICY_VERSION_MINIMUM} 3.5)\n/' "${VCPKG_INSTALLATION_ROOT}/scripts/ports.cmake"
 
       - name: Set VCPKG_ROOT
-        run: echo "VCPKG_ROOT=${VCPKG_INSTALLATION_ROOT}" >> "$env:GITHUB_ENV"
+        shell: bash
+        run: echo "VCPKG_ROOT=${VCPKG_INSTALLATION_ROOT}" >> "$GITHUB_ENV"
 
       - name: Generate build system
         run: |
