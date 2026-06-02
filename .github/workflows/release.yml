@@ -93,37 +93,50 @@ jobs:
             blockzero-*-macos-*.tar.gz.sha256
 
   windows-x64:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 120
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 180
+    env:
+      PYTHONUTF8: 1
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install cross-build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake make python3 bison gperf \
-            curl automake libtool pkg-config g++-mingw-w64-x86-64-posix
+      - name: Import Visual Studio env vars
+        run: py -3 .github/ci-windows.py standard github_import_vs_env
 
-      - name: Build depends (Windows)
+      - name: Configure vcpkg
+        shell: bash
         run: |
-          make -C depends HOST=x86_64-w64-mingw32 -j"$(nproc)" NO_QT=1
+          echo "set(VCPKG_BUILD_TYPE release)" >> "${VCPKG_INSTALLATION_ROOT}/triplets/x64-windows.cmake"
+          sed -i '1s/^/set(ENV{CMAKE_POLICY_VERSION_MINIMUM} 3.5)\n/' "${VCPKG_INSTALLATION_ROOT}/scripts/ports.cmake"
+
+      - name: Set VCPKG_ROOT
+        run: echo "VCPKG_ROOT=${VCPKG_INSTALLATION_ROOT}" >> "$env:GITHUB_ENV"
+
+      - name: Generate build system
+        run: |
+          cmake -B build --preset vs2026 `
+            -DBUILD_GUI=OFF `
+            -DENABLE_IPC=OFF `
+            -DBUILD_TESTS=OFF `
+            -DENABLE_WALLET=ON `
+            -DWITH_ZMQ=OFF `
+            -DVCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON `
+            -DVCPKG_MANIFEST_FEATURES=wallet
 
       - name: Build
-        run: |
-          cmake -B build --toolchain depends/x86_64-w64-mingw32/toolchain.cmake \
-            ${{ env.BUILD_FLAGS }}
-          cmake --build build -j"$(nproc)" --target bitcoind bitcoin-cli
+        run: cmake --build build --config Release -j $env:NUMBER_OF_PROCESSORS --target bitcoind bitcoin-cli
 
       - name: Package
+        shell: bash
         run: |
           TAG="${GITHUB_REF_NAME}"
           PKG="blockzero-${TAG}-windows-x64"
           mkdir -p "${PKG}/bin"
-          cp build/bin/bitcoind.exe build/bin/bitcoin-cli.exe "${PKG}/bin/"
+          cp build/bin/Release/bitcoind.exe build/bin/Release/bitcoin-cli.exe "${PKG}/bin/"
           cp contrib/testnet/bitcoin.conf.example "${PKG}/bitcoin.conf.example"
-          zip -r "${PKG}.zip" "${PKG}"
+          powershell -Command "Compress-Archive -Path '${PKG}' -DestinationPath '${PKG}.zip' -Force"
           sha256sum "${PKG}.zip" > "${PKG}.zip.sha256"
 
       - uses: softprops/action-gh-release@v2
