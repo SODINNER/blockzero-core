@@ -1,0 +1,124 @@
+# Release Block Zero CLI binaries (testnet mining)
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  linux-x64:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config python3 \
+            libevent-dev libboost-dev libsqlite3-dev
+
+      - name: Build
+        run: |
+          cmake -B build -DBUILD_GUI=OFF -DENABLE_IPC=OFF -DBUILD_TESTS=OFF
+          cmake --build build -j"$(nproc)" --target bitcoind bitcoin-cli bitcoin-wallet
+
+      - name: Package
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PKG="blockzero-${TAG}-linux-x64"
+          mkdir -p "${PKG}/bin"
+          cp build/bin/bitcoind build/bin/bitcoin-cli build/bin/bitcoin-wallet "${PKG}/bin/"
+          cp contrib/testnet/bitcoin.conf.example "${PKG}/bitcoin.conf.example"
+          tar -czf "${PKG}.tar.gz" "${PKG}"
+          sha256sum "${PKG}.tar.gz" > "${PKG}.tar.gz.sha256"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            blockzero-*-linux-x64.tar.gz
+            blockzero-*-linux-x64.tar.gz.sha256
+
+  macos:
+    strategy:
+      matrix:
+        include:
+          - runner: macos-14
+            arch: arm64
+          - runner: macos-13
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: brew install cmake boost libevent pkg-config
+
+      - name: Build
+        run: |
+          cmake -B build -DBUILD_GUI=OFF -DENABLE_IPC=OFF -DBUILD_TESTS=OFF
+          cmake --build build -j"$(sysctl -n hw.ncpu)" --target bitcoind bitcoin-cli bitcoin-wallet
+
+      - name: Package
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PKG="blockzero-${TAG}-macos-${{ matrix.arch }}"
+          mkdir -p "${PKG}/bin"
+          cp build/bin/bitcoind build/bin/bitcoin-cli build/bin/bitcoin-wallet "${PKG}/bin/"
+          cp contrib/testnet/bitcoin.conf.example "${PKG}/bitcoin.conf.example"
+          tar -czf "${PKG}.tar.gz" "${PKG}"
+          shasum -a 256 "${PKG}.tar.gz" > "${PKG}.tar.gz.sha256"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            blockzero-*-macos-*.tar.gz
+            blockzero-*-macos-*.tar.gz.sha256
+
+  windows-x64:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install cross-build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-mingw-w64-x86-64-posix cmake make python3 \
+            libevent-dev libboost-dev libsqlite3-dev
+
+      - name: Build depends (Windows)
+        run: |
+          make -C depends HOST=x86_64-w64-mingw32 -j"$(nproc)" NO_QT=1
+
+      - name: Build
+        run: |
+          cmake -B build --toolchain depends/x86_64-w64-mingw32/toolchain.cmake \
+            -DBUILD_GUI=OFF -DENABLE_IPC=OFF -DBUILD_TESTS=OFF
+          cmake --build build -j"$(nproc)" --target bitcoind bitcoin-cli bitcoin-wallet
+
+      - name: Package
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PKG="blockzero-${TAG}-windows-x64"
+          mkdir -p "${PKG}/bin"
+          cp build/bin/bitcoind.exe build/bin/bitcoin-cli.exe build/bin/bitcoin-wallet.exe "${PKG}/bin/"
+          cp contrib/testnet/bitcoin.conf.example "${PKG}/bitcoin.conf.example"
+          zip -r "${PKG}.zip" "${PKG}"
+          sha256sum "${PKG}.zip" > "${PKG}.zip.sha256"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            blockzero-*-windows-x64.zip
+            blockzero-*-windows-x64.zip.sha256
