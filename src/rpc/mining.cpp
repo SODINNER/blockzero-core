@@ -28,6 +28,13 @@
 #include <rpc/blockchain.h>
 #include <rpc/mining.h>
 #include <rpc/server.h>
+
+#include <atomic>
+#include <cstring>
+#include <pow_randomx.h>
+#include <span>
+#include <thread>
+#include <vector>
 #include <rpc/server_util.h>
 #include <rpc/util.h>
 #include <script/descriptor.h>
@@ -139,7 +146,7 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock&& block, uint64_t&
     block_out.reset();
     block.hashMerkleRoot = BlockMerkleRoot(block);
 
-    // Block Zero: grind against the RandomX hash using the height-based seed key.
+    // Block Zero: multi-threaded RandomX grind using the height-based seed key.
     uint256 rx_key;
     {
         LOCK(cs_main);
@@ -148,17 +155,57 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock&& block, uint64_t&
         rx_key = GetRandomXKey(pindexPrev, nHeight, chainman.GetConsensus());
     }
 
-    while (max_tries > 0 && block.nNonce < std::numeric_limits<uint32_t>::max() && !CheckProofOfWork(block, rx_key, chainman.GetConsensus()) && !chainman.m_interrupt) {
-        ++block.nNonce;
-        --max_tries;
-    }
-    if (max_tries == 0 || chainman.m_interrupt) {
+    auto bnTarget = DeriveTarget(block.nBits, chainman.GetConsensus().powLimit);
+    if (!bnTarget || max_tries == 0 || chainman.m_interrupt) {
         return false;
     }
-    if (block.nNonce == std::numeric_limits<uint32_t>::max()) {
-        return true;
+
+    block.nNonce = 0;
+    DataStream ss;
+    ss << static_cast<const CBlockHeader&>(block);
+    const size_t header_len = ss.size();
+    std::vector<unsigned char> header_bytes(header_len);
+    std::memcpy(header_bytes.data(), ss.data(), header_len);
+    const uint256 key = rx_key;
+    const arith_uint256 tgt = *bnTarget;
+    const uint64_t budget = max_tries;
+
+    unsigned nthreads = std::thread::hardware_concurrency();
+    if (nthreads == 0) nthreads = 4;
+    nthreads = std::min<unsigned>(nthreads, 16);
+
+    std::atomic<bool> found{false};
+    std::atomic<uint32_t> found_nonce{0};
+    std::atomic<uint64_t> tries_done{0};
+
+    std::vector<std::thread> threads;
+    threads.reserve(nthreads);
+    for (unsigned t = 0; t < nthreads; ++t) {
+        threads.emplace_back([&, t]() {
+            std::vector<unsigned char> bytes = header_bytes;
+            for (uint64_t nonce = t; nonce <= std::numeric_limits<uint32_t>::max(); nonce += nthreads) {
+                if (found.load(std::memory_order_relaxed)) return;
+                if (tries_done.fetch_add(1, std::memory_order_relaxed) >= budget) return;
+                const uint32_t n = static_cast<uint32_t>(nonce);
+                std::memcpy(bytes.data() + header_len - 4, &n, 4);
+                if (UintToArith256(RandomXComputeHash(key, std::span<const unsigned char>{bytes.data(), header_len})) <= tgt) {
+                    bool expected = false;
+                    if (found.compare_exchange_strong(expected, true)) found_nonce.store(n);
+                    return;
+                }
+            }
+        });
+    }
+    for (auto& th : threads) th.join();
+
+    const uint64_t used = tries_done.load();
+    max_tries = used >= budget ? 0 : budget - used;
+
+    if (!found.load() || chainman.m_interrupt) {
+        return false;
     }
 
+    block.nNonce = found_nonce.load();
     block_out = std::make_shared<const CBlock>(std::move(block));
 
     if (!process_new_block) return true;

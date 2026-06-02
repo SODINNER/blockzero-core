@@ -20,4 +20,4 @@ the next steps.
 
 ## Disclaimer
 
-Block Zero is an experimental open-source blockchain project. BZERO has no guaranteed value, no promised liquidity and no expected return. Participation is voluntary and mainly intended for technical, educational and community purposes.
+Block Zero is an experimental open-source blockchain project. BLOZ has no guaranteed value, no promised liquidity and no expected return. Participation is voluntary and mainly intended for technical, educational and community purposes.
