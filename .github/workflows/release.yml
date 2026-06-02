@@ -16,6 +16,7 @@ env:
     -DENABLE_IPC=OFF
     -DBUILD_TESTS=OFF
     -DENABLE_WALLET=ON
+    -DCMAKE_CXX_STANDARD=20
 
 jobs:
   linux-x64:
@@ -92,7 +93,7 @@ jobs:
             blockzero-*-macos-*.tar.gz.sha256
 
   windows-x64:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -102,16 +103,16 @@ jobs:
       - name: Install cross-build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++-mingw-w64-ucrt64 cmake make python3 \
-            bison gperf
+          sudo apt-get install -y build-essential cmake make python3 bison gperf \
+            curl automake libtool pkg-config g++-mingw-w64-x86-64-posix
 
-      - name: Build depends (Windows UCRT)
+      - name: Build depends (Windows)
         run: |
-          make -C depends HOST=x86_64-w64-mingw32ucrt -j"$(nproc)" NO_QT=1
+          make -C depends HOST=x86_64-w64-mingw32 -j"$(nproc)" NO_QT=1
 
       - name: Build
         run: |
-          cmake -B build --toolchain depends/x86_64-w64-mingw32ucrt/toolchain.cmake \
+          cmake -B build --toolchain depends/x86_64-w64-mingw32/toolchain.cmake \
             ${{ env.BUILD_FLAGS }}
           cmake --build build -j"$(nproc)" --target bitcoind bitcoin-cli
 
