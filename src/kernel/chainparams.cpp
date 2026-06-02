@@ -160,6 +160,8 @@ public:
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x88, 0xAD, 0xE4};
 
         bech32_hrp = "bz";
+        m_currency_unit = "BLOZ";
+        m_currency_atom = "sat";
 
         vFixedSeeds.clear();
 
@@ -285,6 +287,8 @@ public:
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x94};
 
         bech32_hrp = "tbz";
+        m_currency_unit = "TBLOZ";
+        m_currency_atom = "tsat";
 
         vFixedSeeds.clear();
 
@@ -698,6 +702,8 @@ public:
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x94};
 
         bech32_hrp = "bzrt";
+        m_currency_unit = "TBLOZ";
+        m_currency_atom = "tsat";
 
         // Copied from Testnet4.
         m_headers_sync_params = HeadersSyncParams{

@@ -16,8 +16,15 @@
 #include <string>
 #include <type_traits>
 
-const std::string CURRENCY_UNIT = "BLOZ"; // One formatted unit
-const std::string CURRENCY_ATOM = "szat"; // One indivisible minimum value unit (1 BLOZ = 100,000,000 szat)
+#include <chainparams.h>
+
+/** Display unit for the active chain (BLOZ mainnet, TBLOZ testnet/regtest). */
+inline std::string CurrencyUnit() { return Params().CurrencyUnit(); }
+/** Smallest on-chain unit name for fee-rate strings (sat / tsat). */
+inline std::string CurrencyAtom() { return Params().CurrencyAtom(); }
+
+#define CURRENCY_UNIT CurrencyUnit()
+#define CURRENCY_ATOM CurrencyAtom()
 
 enum class FeeRateFormat {
     BTC_KVB, //!< Use BTC/kvB fee rate unit
