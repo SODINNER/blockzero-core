@@ -114,12 +114,12 @@ void MineOne(const char* net, const char* pszTimestamp, uint32_t nTime, uint32_t
 
 int main()
 {
-    const char* msg = "Block Zero 30/May/2026 fair launch no premine no ICO";
+    // Testnet v2 genesis (2026-06-04 reset). Mainnet genesis is unchanged until launch.
+    const char* testnet_msg =
+        "The Times 04/Jun/2026 Block Zero - a second chance at Genesis, fair launch, no premine";
 
-    // Difficulty floor 0x1e3fffff: safe under the 12h-retarget overflow bound and
-    // fast to mine in light mode. Distinct nTime per network.
-    MineOne("testnet", msg, 1748563201, 0x1e3fffff);
-    MineOne("mainnet", msg, 1748563200, 0x1e3fffff);
+    // nTime = 2026-06-04 00:00:00 UTC (must match the date in the message).
+    MineOne("testnet", testnet_msg, 1780531200, 0x1e3fffff);
 
     return 0;
 }

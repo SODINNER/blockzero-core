@@ -37,14 +37,14 @@ jobs:
       - name: Build
         run: |
           cmake -B build ${{ env.BUILD_FLAGS }}
-          cmake --build build -j"$(nproc)" --target bitcoind bitcoin-cli bitcoin-qt
+          cmake --build build -j"$(nproc)" --target bitcoind bitcoin-cli bitcoin-qt bz-genesis-miner
 
       - name: Package
         run: |
           TAG="${GITHUB_REF_NAME}"
           PKG="blockzero-${TAG}-linux-x64"
           mkdir -p "${PKG}/bin"
-          cp build/bin/bitcoind build/bin/bitcoin-cli build/bin/bitcoin-qt "${PKG}/bin/"
+          cp build/bin/bitcoind build/bin/bitcoin-cli build/bin/bitcoin-qt build/bin/bz-genesis-miner "${PKG}/bin/"
           cp contrib/testnet/bitcoin.conf.example "${PKG}/bitcoin.conf.example"
           tar -czf "${PKG}.tar.gz" "${PKG}"
           sha256sum "${PKG}.tar.gz" > "${PKG}.tar.gz.sha256"
@@ -77,14 +77,14 @@ jobs:
         run: |
           cmake -B build ${{ env.BUILD_FLAGS }} \
             -DCMAKE_PREFIX_PATH="$(brew --prefix qt@6)"
-          cmake --build build -j"$(sysctl -n hw.ncpu)" --target bitcoind bitcoin-cli bitcoin-qt
+          cmake --build build -j"$(sysctl -n hw.ncpu)" --target bitcoind bitcoin-cli bitcoin-qt bz-genesis-miner
 
       - name: Package
         run: |
           TAG="${GITHUB_REF_NAME}"
           PKG="blockzero-${TAG}-macos-${{ matrix.arch }}"
           mkdir -p "${PKG}/bin"
-          cp build/bin/bitcoind build/bin/bitcoin-cli "${PKG}/bin/"
+          cp build/bin/bitcoind build/bin/bitcoin-cli build/bin/bz-genesis-miner "${PKG}/bin/"
           # bitcoin-qt is built as a .app bundle on macOS; fall back to the raw binary.
           if [ -d build/bin/bitcoin-qt.app ]; then
             cp -R build/bin/bitcoin-qt.app "${PKG}/"
@@ -136,7 +136,7 @@ jobs:
             -DVCPKG_MANIFEST_FEATURES="wallet;qt"
 
       - name: Build
-        run: cmake --build build --config Release -j $env:NUMBER_OF_PROCESSORS --target bitcoind bitcoin-cli bitcoin-qt
+        run: cmake --build build --config Release -j $env:NUMBER_OF_PROCESSORS --target bitcoind bitcoin-cli bitcoin-qt bz-genesis-miner
 
       - name: Package
         shell: bash
@@ -144,7 +144,7 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           PKG="blockzero-${TAG}-windows-x64"
           mkdir -p "${PKG}/bin"
-          cp build/bin/Release/bitcoind.exe build/bin/Release/bitcoin-cli.exe build/bin/Release/bitcoin-qt.exe "${PKG}/bin/"
+          cp build/bin/Release/bitcoind.exe build/bin/Release/bitcoin-cli.exe build/bin/Release/bitcoin-qt.exe build/bin/Release/bz-genesis-miner.exe "${PKG}/bin/"
           cp contrib/testnet/bitcoin.conf.example "${PKG}/bitcoin.conf.example"
           powershell -Command "Compress-Archive -Path '${PKG}' -DestinationPath '${PKG}.zip' -Force"
           sha256sum "${PKG}.zip" > "${PKG}.zip.sha256"
