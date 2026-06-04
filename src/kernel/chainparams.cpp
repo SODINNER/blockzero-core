@@ -266,15 +266,15 @@ public:
         m_assumed_blockchain_size = 245;
         m_assumed_chain_state_size = 19;
 
-        // Block Zero testnet genesis (RandomX proof-of-work).
+        // Block Zero testnet genesis (RandomX proof-of-work) - v2 (2026-06-04 reset).
         {
-            const char* bz_genesis_msg = "Block Zero 30/May/2026 fair launch no premine no ICO";
+            const char* bz_genesis_msg = "The Times 04/Jun/2026 Block Zero - a second chance at Genesis, fair launch, no premine";
             const CScript bz_genesis_script = CScript() << "04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"_hex << OP_CHECKSIG;
-            genesis = CreateGenesisBlock(bz_genesis_msg, bz_genesis_script, 1748563201, 175029, 0x1e3fffff, 1, 50 * COIN);
+            genesis = CreateGenesisBlock(bz_genesis_msg, bz_genesis_script, 1780531200, 232039, 0x1e3fffff, 1, 50 * COIN);
         }
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"f58130b19cdf3d03b22c5a67a6509b00750b2d8975ee9d889d5b613aaae5296e"});
-        assert(genesis.hashMerkleRoot == uint256{"49cfbb32ead8daad200c539ba73248d697ea1bab60169304e1e190f4f96524bd"});
+        assert(consensus.hashGenesisBlock == uint256{"36267240061ea9084bead4bf3d263f0c8ae54056ea02508cfad5b8de3803bff8"});
+        assert(genesis.hashMerkleRoot == uint256{"af560edb6023bc5ecbe02eea9d5c623b7c14f44b17251e84c8b6fb5c9098a63a"});
 
         vFixedSeeds.clear();
         vSeeds.clear();

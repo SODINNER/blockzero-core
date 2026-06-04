@@ -16,23 +16,8 @@
 #include <string>
 #include <type_traits>
 
-#include <chainparams.h>
-
-/** Display unit for the active chain (BLOZ mainnet, TBLOZ testnet/regtest). */
-inline std::string CurrencyUnit()
-{
-    if (IsChainParamsSet()) return Params().CurrencyUnit();
-    return "BLOZ";
-}
-/** Smallest on-chain unit name for fee-rate strings (sat / tsat). */
-inline std::string CurrencyAtom()
-{
-    if (IsChainParamsSet()) return Params().CurrencyAtom();
-    return "sat";
-}
-
-#define CURRENCY_UNIT CurrencyUnit()
-#define CURRENCY_ATOM CurrencyAtom()
+const std::string CURRENCY_UNIT = "BLOZ"; // One formatted unit
+const std::string CURRENCY_ATOM = "szat"; // One indivisible minimum value unit (1 BLOZ = 100,000,000 szat)
 
 enum class FeeRateFormat {
     BTC_KVB, //!< Use BTC/kvB fee rate unit

@@ -13,7 +13,7 @@ $RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $logPath = if ([System.IO.Path]::IsPathRooted($LogFile)) { $LogFile } else { Join-Path (Get-Location) $LogFile }
 
 if (-not (Test-Path $logPath)) {
-    throw "Log not found: $logPath — run mine-testnet-genesis.ps1 first."
+    throw "Log not found: $logPath - run mine-testnet-genesis.ps1 first."
 }
 
 $text = Get-Content $logPath -Raw
@@ -45,21 +45,24 @@ Write-Host "  merkle=$merkle"
 Write-Host ""
 
 $chainparams = Join-Path $RepoRoot "src\kernel\chainparams.cpp"
-$lines = Get-Content $chainparams
+$lines = [System.Collections.Generic.List[string]](Get-Content $chainparams)
 $marker = "// Block Zero testnet genesis (RandomX proof-of-work)."
-$start = [array]::IndexOf($lines, $marker)
+$start = $lines.IndexOf($marker)
 if ($start -lt 0) { throw "Testnet genesis marker not found in chainparams.cpp" }
 
 $end = $start
 while ($end -lt $lines.Count -and $lines[$end] -notmatch '^\s*\}\s*$') { $end++ }
 if ($end -ge $lines.Count) { throw "Could not find end of testnet genesis block" }
 
+$scriptLine = '            const CScript bz_genesis_script = CScript() << "04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"_hex << OP_CHECKSIG;'
+$createLine = "            genesis = CreateGenesisBlock(bz_genesis_msg, bz_genesis_script, $nTime, $nonce, 0x1e3fffff, 1, 50 * COIN);"
+
 $newBlock = @(
     $marker
     '        {'
     "            const char* bz_genesis_msg = `"$($spec.message)`";"
-    '            const CScript bz_genesis_script = CScript() << "04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"_hex << OP_CHECKSIG;'
-    "            genesis = CreateGenesisBlock(bz_genesis_msg, bz_genesis_script, $nTime, $nonce, 0x1e3fffff, 1, 50 * COIN);"
+    $scriptLine
+    $createLine
     '        }'
 )
 
@@ -73,31 +76,31 @@ if ($WhatIf) {
     exit 0
 }
 
-$before = $lines[0..($start - 1)]
-$after = $lines[($end + 1)..($lines.Count - 1)]
-$out = New-Object System.Collections.Generic.List[string]
-$out.AddRange($before)
-$out.AddRange($newBlock)
-$out.AddRange($after)
+$lines.RemoveRange($start, ($end - $start + 1))
+for ($i = $newBlock.Count - 1; $i -ge 0; $i--) {
+    $lines.Insert($start, $newBlock[$i])
+}
 
-$out[$hashLine] = "        assert(consensus.hashGenesisBlock == uint256{`"$hashGenesis`"});"
-$out[$merkleLine] = "        assert(genesis.hashMerkleRoot == uint256{`"$merkle`"});"
+$hashLine = $start + $newBlock.Count + 1
+$merkleLine = $hashLine + 1
+$lines[$hashLine] = '        assert(consensus.hashGenesisBlock == uint256{"' + $hashGenesis + '"});'
+$lines[$merkleLine] = '        assert(genesis.hashMerkleRoot == uint256{"' + $merkle + '"});'
 
-Set-Content -Path $chainparams -Value $out -Encoding UTF8
+Set-Content -Path $chainparams -Value $lines -Encoding utf8
 
 $spec.status = "mined"
 $spec.nonce = [int]$nonce
 $spec.hashGenesisBlock = $hashGenesis
 $spec.hashMerkleRoot = $merkle
 $spec.powHash = $powHash
-$spec | ConvertTo-Json -Depth 6 | Set-Content -Path $specPath -Encoding UTF8
+$spec | ConvertTo-Json -Depth 6 | Set-Content -Path $specPath -Encoding utf8
 
 Write-Host "Updated:"
 Write-Host "  $chainparams"
 Write-Host "  $specPath"
 Write-Host ""
 Write-Host "Next:"
-Write-Host "  1. cmake --build build --config Release --target bitcoind"
-Write-Host "  2. Commit, push, tag release (e.g. v0.1.0-testnet.8)"
-Write-Host "  3. Set blockzero-ops/scripts/testnet/chain-identity.ps1 -> `$OfficialGenesis = `"$hashGenesis`""
-Write-Host "  4. Reset VPS seed — blockzero-docs/testnet-v2-reset.md"
+Write-Host "  1. Commit and push blockzero-core"
+Write-Host "  2. Tag release (e.g. v0.1.0-testnet.8)"
+Write-Host "  3. Set chain-identity.ps1: OfficialGenesis = $hashGenesis"
+Write-Host "  4. VPS reset - see blockzero-docs/testnet-v2-reset.md"

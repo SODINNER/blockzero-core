@@ -1,22 +1,24 @@
-# Mine the Block Zero testnet v2 genesis block (RandomX, native Windows).
+# Mine the Block Zero testnet v2 genesis block (RandomX).
 #
-# Usage (PowerShell — NOT WSL):
-#   cd blockzero-core
+# Usage (PowerShell, from blockzero-core):
 #   .\scripts\genesis\mine-testnet-genesis.ps1
-#   .\scripts\genesis\mine-testnet-genesis.ps1 -BinDir "C:\path\to\build\bin\Release"
+#   .\scripts\genesis\mine-testnet-genesis.ps1 -BinDir ".\build\bin\Release"
+#   .\scripts\genesis\mine-testnet-genesis.ps1 -UseWsl   # slow fallback if no Windows build
 #
-# Requires bz-genesis-miner.exe (build from source or a release that ships it).
-# Typical runtime on a modern desktop CPU: 1–5 minutes native Windows vs 30+ min in WSL2.
+# Native Windows: ~1-5 min. WSL2 fallback: ~30-90 min (RandomX is slow in WSL).
 
 param(
     [string]$BinDir = "",
-    [string]$LogFile = "genesis-mine.log"
+    [string]$LogFile = "genesis-mine.log",
+    [switch]$UseWsl,
+    [string]$WslDistro = "Ubuntu-22.04",
+    [string]$WslMinerPath = "/home/marlon/blockzero-core/build/bin/bz-genesis-miner"
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 
-function Find-GenesisMiner {
+function Find-WindowsMiner {
     if ($BinDir) {
         $p = Join-Path $BinDir "bz-genesis-miner.exe"
         if (Test-Path $p) { return $p }
@@ -29,19 +31,26 @@ function Find-GenesisMiner {
     foreach ($c in $candidates) {
         if (Test-Path $c) { return $c }
     }
-    throw @"
-Cannot find bz-genesis-miner.exe.
+    return $null
+}
 
-Build natively on Windows (fast RandomX):
-  git clone --recurse-submodules https://github.com/Rexemre/blockzero-core.git
-  cd blockzero-core
-  cmake -B build --preset vs2026-static
-  cmake --build build --config Release --target bz-genesis-miner
-
-Or download a release that includes bz-genesis-miner.exe in the zip.
-
-Do NOT use WSL2 for genesis mining — it is 10–20x slower.
-"@
+function Show-BuildHelp {
+    Write-Host ""
+    Write-Host "Cannot find bz-genesis-miner.exe on Windows."
+    Write-Host ""
+    Write-Host "Option A - Build on Windows (fast, recommended):"
+    Write-Host "  Install Visual Studio 2022 with C++ desktop workload"
+    Write-Host "  Install CMake: winget install Kitware.CMake"
+    Write-Host "  Open a NEW PowerShell window, then:"
+    Write-Host "    cd $RepoRoot"
+    Write-Host "    cmake -B build --preset vs2026-static"
+    Write-Host "    cmake --build build --config Release --target bz-genesis-miner"
+    Write-Host ""
+    Write-Host "Option B - WSL fallback (slow, but works without VS):"
+    Write-Host "    .\scripts\genesis\mine-testnet-genesis.ps1 -UseWsl"
+    Write-Host ""
+    Write-Host "Option C - Download a release zip that includes bz-genesis-miner.exe"
+    Write-Host "  https://github.com/Rexemre/blockzero-core/releases"
 }
 
 $specPath = Join-Path $RepoRoot "artifacts\genesis\testnet-v2.json"
@@ -55,13 +64,39 @@ Write-Host "Message: $($spec.message)"
 Write-Host "nTime:   $($spec.nTime) ($($spec.nTimeHuman))"
 Write-Host ""
 
-$miner = Find-GenesisMiner
-Write-Host "Using: $miner"
-Write-Host "Logging to: $LogFile"
-Write-Host ""
-
 $logPath = Join-Path (Get-Location) $LogFile
-& $miner 2>&1 | Tee-Object -FilePath $logPath
+$winMiner = Find-WindowsMiner
+
+if ($UseWsl -or (-not $winMiner)) {
+    if (-not $UseWsl -and -not $winMiner) {
+        Show-BuildHelp
+        if (-not (Get-Command wsl -ErrorAction SilentlyContinue)) {
+            throw "No Windows miner found and WSL is not available."
+        }
+        Write-Host "Trying WSL fallback automatically..."
+    } else {
+        Write-Host "Using WSL miner (slow in WSL2 - expect 30-90 min)."
+    }
+
+    $wslRepo = "/home/marlon/blockzero-core"
+    $sync = @"
+cp /mnt/c/Users/Marlon/blockzero/blockzero-core/src/bz_genesis_miner.cpp $wslRepo/src/bz_genesis_miner.cpp && cd $wslRepo && cmake --build build --target bz-genesis-miner -j`$(nproc) && $WslMinerPath
+"@
+    Write-Host "WSL: building/running bz-genesis-miner..."
+    wsl -d $WslDistro -e bash -lc $sync 2>&1 | Tee-Object -FilePath $logPath
+} else {
+    Write-Host "Using: $winMiner"
+    Write-Host "Logging to: $LogFile"
+    Write-Host ""
+    & $winMiner 2>&1 | Tee-Object -FilePath $logPath
+}
+
+if (-not (Test-Path $logPath)) {
+    throw "No log written to $logPath"
+}
+if ((Get-Content $logPath -Raw) -notmatch '\[testnet\] FOUND') {
+    throw "Mining did not finish successfully. Check $logPath"
+}
 
 Write-Host ""
 Write-Host "Done. Next step:"
