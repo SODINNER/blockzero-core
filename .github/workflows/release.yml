@@ -154,3 +154,60 @@ jobs:
           files: |
             blockzero-*-windows-x64.zip
             blockzero-*-windows-x64.zip.sha256
+
+  # Fast CLI-only Windows build: no Qt/GUI, so vcpkg does NOT compile Qt from
+  # source (which makes the full GUI job take ~90 min). Publishes the mining
+  # binaries (bitcoind, bitcoin-cli, bz-genesis-miner) in ~10-15 min.
+  windows-x64-cli:
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 60
+    env:
+      PYTHONUTF8: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Import Visual Studio env vars
+        run: py -3 .github/ci-windows.py standard github_import_vs_env
+
+      - name: Configure vcpkg
+        shell: bash
+        run: |
+          echo "set(VCPKG_BUILD_TYPE release)" >> "${VCPKG_INSTALLATION_ROOT}/triplets/x64-windows-static.cmake"
+          sed -i '1s/^/set(ENV{CMAKE_POLICY_VERSION_MINIMUM} 3.5)\n/' "${VCPKG_INSTALLATION_ROOT}/scripts/ports.cmake"
+
+      - name: Set VCPKG_ROOT
+        shell: bash
+        run: echo "VCPKG_ROOT=${VCPKG_INSTALLATION_ROOT}" >> "$GITHUB_ENV"
+
+      - name: Generate build system (no GUI)
+        run: |
+          cmake -B build --preset vs2026-static `
+            -DBUILD_GUI=OFF `
+            -DENABLE_IPC=OFF `
+            -DBUILD_TESTS=OFF `
+            -DENABLE_WALLET=ON `
+            -DWITH_ZMQ=OFF `
+            -DVCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON `
+            -DVCPKG_MANIFEST_FEATURES="wallet"
+
+      - name: Build
+        run: cmake --build build --config Release -j $env:NUMBER_OF_PROCESSORS --target bitcoind bitcoin-cli bz-genesis-miner
+
+      - name: Package
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PKG="blockzero-${TAG}-windows-x64-cli"
+          mkdir -p "${PKG}/bin"
+          cp build/bin/Release/bitcoind.exe build/bin/Release/bitcoin-cli.exe build/bin/Release/bz-genesis-miner.exe "${PKG}/bin/"
+          cp contrib/testnet/bitcoin.conf.example "${PKG}/bitcoin.conf.example"
+          powershell -Command "Compress-Archive -Path '${PKG}' -DestinationPath '${PKG}.zip' -Force"
+          sha256sum "${PKG}.zip" > "${PKG}.zip.sha256"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            blockzero-*-windows-x64-cli.zip
+            blockzero-*-windows-x64-cli.zip.sha256
