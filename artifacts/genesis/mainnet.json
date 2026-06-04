@@ -1,0 +1,20 @@
+{
+  "network": "mainnet",
+  "status": "mined",
+  "launch": "2026-06-06T06:06:06Z",
+  "message": "The Times 06/Jun/2026 Block Zero - a second chance at Genesis",
+  "nTime": 1780725966,
+  "nTimeHuman": "2026-06-06T06:06:06Z",
+  "nBits": "0x1e3fffff",
+  "nVersion": 1,
+  "rewardBloz": 50,
+  "nonce": 632005,
+  "hashGenesisBlock": "44c1a8c852b3eda21966e1ddb6b0807e22488dffe8a270bf24bf1fa2d66c13bd",
+  "hashMerkleRoot": "1de902b6ecd142366a9d81f27bc1a60457a56761b7bf6aafc1a6a33c3a49b005",
+  "powHash": "00003af178618e971a0f69845fb3ef812b8e24062755a6a212bed617e000649c",
+  "notes": "The genesis timestamp is the launch moment. Because a block's time must be >= the genesis time, block 1 cannot be mined before 2026-06-06 06:06:06 UTC - a built-in fair-launch gate.",
+  "reproduce": {
+    "tool": "bz-genesis-miner",
+    "script": "scripts/genesis/mine-mainnet-genesis.ps1"
+  }
+}

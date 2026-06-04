@@ -114,12 +114,16 @@ void MineOne(const char* net, const char* pszTimestamp, uint32_t nTime, uint32_t
 
 int main()
 {
-    // Testnet genesis (2026-06-04). Mainnet genesis is unchanged until launch.
+    // Testnet genesis (2026-06-04), already frozen in chainparams.
     const char* testnet_msg =
         "The Times 04/Jun/2026 Block Zero - a second chance at Genesis";
-
-    // nTime = 2026-06-04 00:00:00 UTC (must match the date in the message).
     MineOne("testnet", testnet_msg, 1780531200, 0x1e3fffff);
+
+    // Mainnet genesis - launch 2026-06-06 at 06:06:06 UTC (1780725966).
+    // The future timestamp also gates block 1: no block can be mined before launch.
+    const char* mainnet_msg =
+        "The Times 06/Jun/2026 Block Zero - a second chance at Genesis";
+    MineOne("mainnet", mainnet_msg, 1780725966, 0x1e3fffff);
 
     return 0;
 }
