@@ -114,9 +114,9 @@ void MineOne(const char* net, const char* pszTimestamp, uint32_t nTime, uint32_t
 
 int main()
 {
-    // Testnet v2 genesis (2026-06-04 reset). Mainnet genesis is unchanged until launch.
+    // Testnet genesis (2026-06-04). Mainnet genesis is unchanged until launch.
     const char* testnet_msg =
-        "The Times 04/Jun/2026 Block Zero - a second chance at Genesis, fair launch, no premine";
+        "The Times 04/Jun/2026 Block Zero - a second chance at Genesis";
 
     // nTime = 2026-06-04 00:00:00 UTC (must match the date in the message).
     MineOne("testnet", testnet_msg, 1780531200, 0x1e3fffff);

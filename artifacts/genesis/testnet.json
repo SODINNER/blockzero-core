@@ -1,0 +1,19 @@
+{
+  "network": "testnet",
+  "status": "mined",
+  "message": "The Times 04/Jun/2026 Block Zero - a second chance at Genesis",
+  "nTime": 1780531200,
+  "nTimeHuman": "2026-06-04T00:00:00Z",
+  "nBits": "0x1e3fffff",
+  "nVersion": 1,
+  "rewardBloz": 50,
+  "nonce": 244191,
+  "hashGenesisBlock": "7462293eec16a92c54a74362af6825688135e2955250024dcc3668ff4f55cfce",
+  "hashMerkleRoot": "dde7404a2458cd54b4ac603bf860a919f499c47f9b0d00cb27ee0ed59196b9a2",
+  "powHash": "00003a5090fc839be5606d592452a950da01a85fe68155f674d259f6036c3444",
+  "reproduce": {
+    "tool": "bz-genesis-miner",
+    "script": "scripts/genesis/mine-testnet-genesis.ps1",
+    "platform": "Native Windows (PowerShell) or any platform that builds bz-genesis-miner"
+  }
+}

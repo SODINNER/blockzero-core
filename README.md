@@ -76,8 +76,7 @@ like Bitcoin's — only the mining hardware is different.
 ### Genesis
 
 - **Mainnet genesis:** `99b4f6f2a0821c6bdb7794403700424cc8f8c34d15cf79846fa4826134a59eba`
-- **Testnet v2 genesis:** `36267240061ea9084bead4bf3d263f0c8ae54056ea02508cfad5b8de3803bff8` (see [artifacts/genesis/testnet-v2.json](artifacts/genesis/testnet-v2.json))
-- **Testnet v1 (deprecated):** `f58130b19cdf3d03b22c5a67a6509b00750b2d8975ee9d889d5b613aaae5296e`
+- **Testnet genesis:** `7462293eec16a92c54a74362af6825688135e2955250024dcc3668ff4f55cfce` (see [artifacts/genesis/testnet.json](artifacts/genesis/testnet.json))
 
 ---
 

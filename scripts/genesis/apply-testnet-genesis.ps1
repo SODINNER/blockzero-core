@@ -1,4 +1,4 @@
-# Apply bz-genesis-miner output to chainparams.cpp and testnet-v2.json.
+# Apply bz-genesis-miner output to chainparams.cpp and testnet.json.
 #
 # Usage:
 #   .\scripts\genesis\apply-testnet-genesis.ps1 -LogFile genesis-mine.log
@@ -32,7 +32,7 @@ $hashGenesis = Get-Field "hashGenesis"
 $merkle = Get-Field "hashMerkleRoot"
 $powHash = Get-Field "powHash"
 
-$specPath = Join-Path $RepoRoot "artifacts\genesis\testnet-v2.json"
+$specPath = Join-Path $RepoRoot "artifacts\genesis\testnet.json"
 $spec = Get-Content $specPath -Raw | ConvertFrom-Json
 if ([int]$nTime -ne [int]$spec.nTime) {
     throw "Mined nTime ($nTime) != spec nTime ($($spec.nTime)). Rebuild bz-genesis-miner from current source."
@@ -103,4 +103,4 @@ Write-Host "Next:"
 Write-Host "  1. Commit and push blockzero-core"
 Write-Host "  2. Tag release (e.g. v0.1.0-testnet.8)"
 Write-Host "  3. Set chain-identity.ps1: OfficialGenesis = $hashGenesis"
-Write-Host "  4. VPS reset - see blockzero-docs/testnet-v2-reset.md"
+Write-Host "  4. VPS reset - see blockzero-docs/testnet-reset.md"

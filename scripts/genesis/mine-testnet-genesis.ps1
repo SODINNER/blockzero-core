@@ -1,4 +1,4 @@
-# Mine the Block Zero testnet v2 genesis block (RandomX).
+# Mine the Block Zero testnet genesis block (RandomX).
 #
 # Usage (PowerShell, from blockzero-core):
 #   .\scripts\genesis\mine-testnet-genesis.ps1
@@ -53,13 +53,13 @@ function Show-BuildHelp {
     Write-Host "  https://github.com/Rexemre/blockzero-core/releases"
 }
 
-$specPath = Join-Path $RepoRoot "artifacts\genesis\testnet-v2.json"
+$specPath = Join-Path $RepoRoot "artifacts\genesis\testnet.json"
 if (-not (Test-Path $specPath)) {
     throw "Missing $specPath"
 }
 $spec = Get-Content $specPath -Raw | ConvertFrom-Json
 
-Write-Host "Block Zero testnet v2 genesis miner"
+Write-Host "Block Zero testnet genesis miner"
 Write-Host "Message: $($spec.message)"
 Write-Host "nTime:   $($spec.nTime) ($($spec.nTimeHuman))"
 Write-Host ""
