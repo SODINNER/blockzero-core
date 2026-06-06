@@ -30,6 +30,7 @@
 #include <rpc/server.h>
 
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <pow_randomx.h>
 #include <span>
@@ -181,11 +182,19 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock&& block, uint64_t&
     const arith_uint256 tgt = *bnTarget;
     const uint64_t budget = max_tries;
 
+    // Block Zero: remember the parent we are building on. If a new block extends
+    // the active chain while we grind, the candidate we are hashing is already
+    // stale (it would build on a now-obsolete tip and be orphaned), so we abort
+    // the grind early and let the caller rebuild a template on the fresh tip.
+    const uint256 prev_hash{block.hashPrevBlock};
+
     const unsigned nthreads = ResolveMiningThreads(num_threads);
 
     std::atomic<bool> found{false};
     std::atomic<uint32_t> found_nonce{0};
     std::atomic<uint64_t> tries_done{0};
+    std::atomic<bool> stale{false};
+    std::atomic<bool> grind_done{false};
 
     std::vector<std::thread> threads;
     threads.reserve(nthreads);
@@ -194,6 +203,7 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock&& block, uint64_t&
             std::vector<unsigned char> bytes = header_bytes;
             for (uint64_t nonce = t; nonce <= std::numeric_limits<uint32_t>::max(); nonce += nthreads) {
                 if (found.load(std::memory_order_relaxed)) return;
+                if (stale.load(std::memory_order_relaxed)) return;
                 if (tries_done.fetch_add(1, std::memory_order_relaxed) >= budget) return;
                 const uint32_t n = static_cast<uint32_t>(nonce);
                 std::memcpy(bytes.data() + header_len - 4, &n, 4);
@@ -205,12 +215,34 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock&& block, uint64_t&
             }
         });
     }
+
+    // Watcher: abort the grind as soon as the active tip moves past our parent.
+    std::thread watcher([&]() {
+        while (!grind_done.load(std::memory_order_relaxed)) {
+            if (chainman.m_interrupt) {
+                stale.store(true);
+                return;
+            }
+            {
+                LOCK(cs_main);
+                const CBlockIndex* tip = chainman.ActiveChain().Tip();
+                if (tip && tip->GetBlockHash() != prev_hash) {
+                    stale.store(true);
+                    return;
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        }
+    });
+
     for (auto& th : threads) th.join();
+    grind_done.store(true);
+    watcher.join();
 
     const uint64_t used = tries_done.load();
     max_tries = used >= budget ? 0 : budget - used;
 
-    if (!found.load() || chainman.m_interrupt) {
+    if (!found.load() || stale.load() || chainman.m_interrupt) {
         return false;
     }
 
