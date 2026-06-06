@@ -190,6 +190,11 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock&& block, uint64_t&
 
     const unsigned nthreads = ResolveMiningThreads(num_threads);
 
+    // Build the shared fast-mode dataset (~2 GiB, ~5-10x faster than light mode)
+    // once per key. Best effort: if it fails (e.g. low RAM), each thread's hasher
+    // transparently falls back to light mode.
+    RandomXInitMiningDataset(key, nthreads);
+
     std::atomic<bool> found{false};
     std::atomic<uint32_t> found_nonce{0};
     std::atomic<uint64_t> tries_done{0};
@@ -200,6 +205,7 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock&& block, uint64_t&
     threads.reserve(nthreads);
     for (unsigned t = 0; t < nthreads; ++t) {
         threads.emplace_back([&, t]() {
+            RandomXFastHasher hasher(key);
             std::vector<unsigned char> bytes = header_bytes;
             for (uint64_t nonce = t; nonce <= std::numeric_limits<uint32_t>::max(); nonce += nthreads) {
                 if (found.load(std::memory_order_relaxed)) return;
@@ -207,7 +213,7 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock&& block, uint64_t&
                 if (tries_done.fetch_add(1, std::memory_order_relaxed) >= budget) return;
                 const uint32_t n = static_cast<uint32_t>(nonce);
                 std::memcpy(bytes.data() + header_len - 4, &n, 4);
-                if (UintToArith256(RandomXComputeHash(key, std::span<const unsigned char>{bytes.data(), header_len})) <= tgt) {
+                if (UintToArith256(hasher.Hash(std::span<const unsigned char>{bytes.data(), header_len})) <= tgt) {
                     bool expected = false;
                     if (found.compare_exchange_strong(expected, true)) found_nonce.store(n);
                     return;

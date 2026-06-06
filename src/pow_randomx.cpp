@@ -6,7 +6,11 @@
 
 #include <randomx/src/randomx.h>
 
+#include <cstdint>
 #include <cstring>
+#include <mutex>
+#include <thread>
+#include <vector>
 
 namespace {
 
@@ -49,6 +53,19 @@ struct ThreadRandomX {
 
 thread_local ThreadRandomX g_thread_randomx;
 
+// Shared fast-mode dataset (~2 GiB) used by all mining threads. Built once per
+// key under g_mining.mtx; read lock-free during the grind because it is stable
+// for the duration of a mining round (rebuilt only on key rotation).
+struct MiningDataset {
+    std::mutex mtx;
+    randomx_dataset* dataset{nullptr};
+    randomx_flags vm_flags{};
+    uint256 key;
+    bool ready{false};
+};
+
+MiningDataset g_mining;
+
 } // namespace
 
 uint256 RandomXComputeHash(const uint256& key, std::span<const unsigned char> input)
@@ -57,6 +74,88 @@ uint256 RandomXComputeHash(const uint256& key, std::span<const unsigned char> in
 
     unsigned char output[RANDOMX_HASH_SIZE];
     randomx_calculate_hash(g_thread_randomx.vm, input.data(), input.size(), output);
+
+    uint256 result;
+    std::memcpy(result.data(), output, result.size());
+    return result;
+}
+
+bool RandomXInitMiningDataset(const uint256& key, unsigned init_threads)
+{
+    std::lock_guard<std::mutex> lock(g_mining.mtx);
+    if (g_mining.ready && g_mining.key == key) return true;
+
+    const randomx_flags base = randomx_get_flags();
+    const randomx_flags vm_flags = base | RANDOMX_FLAG_FULL_MEM;
+
+    randomx_cache* cache = randomx_alloc_cache(base);
+    if (!cache) return false;
+    randomx_init_cache(cache, key.data(), key.size());
+
+    if (!g_mining.dataset) {
+        g_mining.dataset = randomx_alloc_dataset(vm_flags);
+        if (!g_mining.dataset) {
+            randomx_release_cache(cache);
+            return false;
+        }
+    }
+
+    const unsigned long total = randomx_dataset_item_count();
+    unsigned nthreads = init_threads ? init_threads : 1;
+    if (nthreads > total) nthreads = 1;
+    const unsigned long per = total / nthreads;
+
+    std::vector<std::thread> workers;
+    workers.reserve(nthreads);
+    for (unsigned i = 0; i < nthreads; ++i) {
+        const unsigned long start = static_cast<unsigned long>(i) * per;
+        const unsigned long count = (i == nthreads - 1) ? (total - start) : per;
+        randomx_dataset* ds = g_mining.dataset;
+        workers.emplace_back([ds, cache, start, count]() {
+            randomx_init_dataset(ds, cache, start, count);
+        });
+    }
+    for (auto& w : workers) w.join();
+
+    randomx_release_cache(cache);
+
+    g_mining.vm_flags = vm_flags;
+    g_mining.key = key;
+    g_mining.ready = true;
+    return true;
+}
+
+RandomXFastHasher::RandomXFastHasher(const uint256& key)
+    : m_key(key)
+{
+    randomx_dataset* ds = nullptr;
+    randomx_flags flags{};
+    {
+        std::lock_guard<std::mutex> lock(g_mining.mtx);
+        if (g_mining.ready && g_mining.key == key) {
+            ds = g_mining.dataset;
+            flags = g_mining.vm_flags;
+        }
+    }
+    if (ds) {
+        m_vm = randomx_create_vm(flags, nullptr, ds);
+    }
+}
+
+RandomXFastHasher::~RandomXFastHasher()
+{
+    if (m_vm) randomx_destroy_vm(static_cast<randomx_vm*>(m_vm));
+}
+
+uint256 RandomXFastHasher::Hash(std::span<const unsigned char> input) const
+{
+    if (!m_vm) {
+        // Fast mode unavailable; fall back to light mode so mining still works.
+        return RandomXComputeHash(m_key, input);
+    }
+
+    unsigned char output[RANDOMX_HASH_SIZE];
+    randomx_calculate_hash(static_cast<randomx_vm*>(m_vm), input.data(), input.size(), output);
 
     uint256 result;
     std::memcpy(result.data(), output, result.size());
