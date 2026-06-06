@@ -153,6 +153,13 @@ static unsigned ResolveMiningThreads(unsigned requested)
     return std::max(1U, std::min(requested, hw));
 }
 
+// Stats from the most recent mining round, exposed via getmininginfo so miners
+// can see their actual local hashrate (the node has no other local H/s meter).
+static std::atomic<double> g_last_mining_hps{0.0};
+static std::atomic<uint64_t> g_last_mining_hashes{0};
+static std::atomic<double> g_last_mining_seconds{0.0};
+static std::atomic<bool> g_last_mining_fast{false};
+
 static bool GenerateBlock(ChainstateManager& chainman, CBlock&& block, uint64_t& max_tries, unsigned num_threads, std::shared_ptr<const CBlock>& block_out, bool process_new_block)
 {
     block_out.reset();
@@ -193,7 +200,9 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock&& block, uint64_t&
     // Build the shared fast-mode dataset (~2 GiB, ~5-10x faster than light mode)
     // once per key. Best effort: if it fails (e.g. low RAM), each thread's hasher
     // transparently falls back to light mode.
-    RandomXInitMiningDataset(key, nthreads);
+    const bool fast_mode = RandomXInitMiningDataset(key, nthreads);
+
+    const auto grind_start = std::chrono::steady_clock::now();
 
     std::atomic<bool> found{false};
     std::atomic<uint32_t> found_nonce{0};
@@ -247,6 +256,13 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock&& block, uint64_t&
 
     const uint64_t used = tries_done.load();
     max_tries = used >= budget ? 0 : budget - used;
+
+    // Record this round's measured hashrate for getmininginfo.
+    const double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - grind_start).count();
+    g_last_mining_hashes.store(used);
+    g_last_mining_seconds.store(secs);
+    g_last_mining_hps.store(secs > 0.0 ? static_cast<double>(used) / secs : 0.0);
+    g_last_mining_fast.store(fast_mode);
 
     if (!found.load() || stale.load() || chainman.m_interrupt) {
         return false;
@@ -542,6 +558,10 @@ static RPCHelpMan getmininginfo()
                         {RPCResult::Type::NUM, "difficulty", "The current difficulty"},
                         {RPCResult::Type::STR_HEX, "target", "The current target"},
                         {RPCResult::Type::NUM, "networkhashps", "The network hashes per second"},
+                        {RPCResult::Type::NUM, "localhashps", "This node's measured RandomX hashes per second in the most recent mining round (0 if it has not mined yet)"},
+                        {RPCResult::Type::NUM, "localhashes", "Hashes computed in the most recent mining round"},
+                        {RPCResult::Type::NUM, "localhashseconds", "Duration in seconds of the most recent mining round"},
+                        {RPCResult::Type::BOOL, "localfastmode", "Whether the most recent mining round used the fast-mode RandomX dataset"},
                         {RPCResult::Type::NUM, "pooledtx", "The size of the mempool"},
                         {RPCResult::Type::STR_AMOUNT, "blockmintxfee", "Minimum feerate of packages selected for block inclusion in " + CURRENCY_UNIT + "/kvB"},
                         {RPCResult::Type::STR, "chain", "current network name (" LIST_CHAIN_NAMES ")"},
@@ -583,6 +603,10 @@ static RPCHelpMan getmininginfo()
     obj.pushKV("difficulty", GetDifficulty(tip));
     obj.pushKV("target", GetTarget(tip, chainman.GetConsensus().powLimit).GetHex());
     obj.pushKV("networkhashps",    getnetworkhashps().HandleRequest(request));
+    obj.pushKV("localhashps", g_last_mining_hps.load());
+    obj.pushKV("localhashes", g_last_mining_hashes.load());
+    obj.pushKV("localhashseconds", g_last_mining_seconds.load());
+    obj.pushKV("localfastmode", g_last_mining_fast.load());
     obj.pushKV("pooledtx", mempool.size());
     BlockAssembler::Options assembler_options;
     ApplyArgsManOptions(*node.args, assembler_options);
