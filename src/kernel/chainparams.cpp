@@ -95,17 +95,20 @@ public:
         // lacks the witness commitment/reserved value. Activating SegWit over
         // those blocks would make them fail CheckWitnessMalleation on reindex.
         //
-        // Activation is set to 412, the block right after the current tip (411),
+        // Activation is set to 413, the block right after the current tip (412),
         // via a coordinated flag day: the network is paused, every miner upgrades,
-        // then mining resumes. SegWit then enforces from block 412, which protects
-        // all existing P2WPKH (bz1) coinbase outputs from anyone-can-spend theft.
-        // All nodes MUST upgrade before block 412 or the network will split.
+        // then mining resumes. Blocks 0..412 already exist and were mined without
+        // SegWit, so activation MUST be strictly above the tip (413) to keep them
+        // valid. SegWit then enforces from block 413, which protects all existing
+        // P2WPKH (bz1) coinbase outputs from anyone-can-spend theft (coinbase
+        // maturity is 100 blocks, so none can be spent before SegWit is active).
+        // All nodes MUST upgrade before block 413 or the network will split.
         consensus.BIP34Height = 1;
         consensus.BIP34Hash = uint256{};
         consensus.BIP65Height = 1;
         consensus.BIP66Height = 1;
         consensus.CSVHeight = 1;
-        consensus.SegwitHeight = 412;
+        consensus.SegwitHeight = 413;
         consensus.MinBIP9WarningHeight = 0;
         // Block Zero: RandomX-appropriate difficulty floor (matches genesis nBits 0x1e3fffff).
         consensus.powLimit = uint256{"00003fffff000000000000000000000000000000000000000000000000000000"};
