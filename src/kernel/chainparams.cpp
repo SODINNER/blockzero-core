@@ -94,13 +94,18 @@ public:
         // blocks 0..SegwitHeight-1 were mined without SegWit, so their coinbase
         // lacks the witness commitment/reserved value. Activating SegWit over
         // those blocks would make them fail CheckWitnessMalleation on reindex.
-        // All nodes MUST upgrade before this height or the network will split.
+        //
+        // Activation is set to 412, the block right after the current tip (411),
+        // via a coordinated flag day: the network is paused, every miner upgrades,
+        // then mining resumes. SegWit then enforces from block 412, which protects
+        // all existing P2WPKH (bz1) coinbase outputs from anyone-can-spend theft.
+        // All nodes MUST upgrade before block 412 or the network will split.
         consensus.BIP34Height = 1;
         consensus.BIP34Hash = uint256{};
         consensus.BIP65Height = 1;
         consensus.BIP66Height = 1;
         consensus.CSVHeight = 1;
-        consensus.SegwitHeight = 1000;
+        consensus.SegwitHeight = 412;
         consensus.MinBIP9WarningHeight = 0;
         // Block Zero: RandomX-appropriate difficulty floor (matches genesis nBits 0x1e3fffff).
         consensus.powLimit = uint256{"00003fffff000000000000000000000000000000000000000000000000000000"};
