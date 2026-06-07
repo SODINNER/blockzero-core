@@ -86,14 +86,21 @@ public:
         consensus.nSubsidyHalvingInterval = 210000;
         // Block Zero: fresh chain — no inherited Bitcoin script-flag exceptions
         // (those referenced specific Bitcoin blocks that never exist here).
-        // Block Zero: fresh chain — all buried soft forks active from height 1
-        // (mirrors TestNet4/Signet params). Genesis (height 0) stays exempt.
+        //
+        // BIP34/65/66/CSV are active from height 1: the existing chain only has
+        // coinbase blocks, which already satisfy these rules.
+        //
+        // SegWit is activated at a FUTURE height (flag day), NOT from height 1:
+        // blocks 0..SegwitHeight-1 were mined without SegWit, so their coinbase
+        // lacks the witness commitment/reserved value. Activating SegWit over
+        // those blocks would make them fail CheckWitnessMalleation on reindex.
+        // All nodes MUST upgrade before this height or the network will split.
         consensus.BIP34Height = 1;
         consensus.BIP34Hash = uint256{};
         consensus.BIP65Height = 1;
         consensus.BIP66Height = 1;
         consensus.CSVHeight = 1;
-        consensus.SegwitHeight = 1;
+        consensus.SegwitHeight = 1000;
         consensus.MinBIP9WarningHeight = 0;
         // Block Zero: RandomX-appropriate difficulty floor (matches genesis nBits 0x1e3fffff).
         consensus.powLimit = uint256{"00003fffff000000000000000000000000000000000000000000000000000000"};
