@@ -1,3 +1,26 @@
+> ## ⚠️ Notice — this fork pins to the original mainnet consensus
+>
+> On **2026-06-12** the upstream maintainer (`Rexemre/blockzero-core`) merged
+> an undisclosed consensus hardfork that diverts up to **20 %** of every block
+> subsidy to a single hardcoded address starting at **block 1500**. There was
+> no announcement, no BIP, no discussion, no multi-sig, no timelock — the
+> change went from first commit to merged `main` in **82 minutes**.
+>
+> The `bloz-classic` branch of this repository is pinned to commit
+> [`711a458e`](https://github.com/SODINNER/blockzero-core/commit/711a458e)
+> (2026-06-07, SegWit flag-day fix) — the last upstream commit before the
+> "dev fund" was added, and the consensus our mainnet actually launched on.
+>
+> If you want to keep mining the chain Block Zero was launched as, build from
+> this branch. At block 1500 the chain splits; the public infrastructure under
+> [bloz.cc](https://bloz.cc) (pool, explorer, seed node, wallet) stays on
+> this consensus and will not enforce the dev-fund rule.
+>
+> Full write-up and evidence:
+> **[bitcointalk.org thread](https://bitcointalk.org/index.php?topic=5585432.msg66827452#msg66827452)**
+>
+> ---
+
 # BLOCK ZERO
 
 ### Modern Bitcoin code. A second chance at Genesis.
