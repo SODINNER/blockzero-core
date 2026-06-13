@@ -100,6 +100,9 @@ enum class SynchronizationState {
 extern const std::vector<std::string> CHECKLEVEL_DOC;
 
 CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams);
+/** bloz-classic: dev-fund amount a block at nHeight would have to pay to belong
+ *  to the rejected tax chain (0 when the fund is inactive). */
+CAmount GetDevFundMinimum(int nHeight, const Consensus::Params& consensusParams);
 
 bool FatalError(kernel::Notifications& notifications, BlockValidationState& state, const bilingual_str& message);
 

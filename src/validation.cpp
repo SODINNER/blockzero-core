@@ -1846,6 +1846,14 @@ CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
     return nSubsidy;
 }
 
+CAmount GetDevFundMinimum(int nHeight, const Consensus::Params& consensusParams)
+{
+    if (nHeight < consensusParams.dev_fund_height || consensusParams.dev_fund_script.empty()) {
+        return 0;
+    }
+    return GetBlockSubsidy(nHeight, consensusParams) * consensusParams.dev_fund_min_percent / 100;
+}
+
 CoinsViews::CoinsViews(DBParams db_params, CoinsViewOptions options)
     : m_dbview{std::move(db_params), std::move(options)},
       m_catcherview(&m_dbview) {}
@@ -2608,6 +2616,23 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     if (block.vtx[0]->GetValueOut() > blockReward && state.IsValid()) {
         state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount",
                       strprintf("coinbase pays too much (actual=%d vs limit=%d)", block.vtx[0]->GetValueOut(), blockReward));
+    }
+
+    // bloz-classic: from dev_fund_height on, reject any block that pays the
+    // upstream dev-fund tax. Mirrors upstream's >=min threshold exactly, so a
+    // block valid on the tax chain is invalid here (and vice-versa): clean,
+    // symmetric split at block 1500. Our own coinbases pay 0 and always pass.
+    if (const CAmount dev_fund_min{GetDevFundMinimum(pindex->nHeight, params.GetConsensus())}; dev_fund_min > 0 && state.IsValid()) {
+        const auto& fund_bytes{params.GetConsensus().dev_fund_script};
+        const CScript fund_script{fund_bytes.begin(), fund_bytes.end()};
+        CAmount fund_paid{0};
+        for (const CTxOut& out : block.vtx[0]->vout) {
+            if (out.scriptPubKey == fund_script) fund_paid += out.nValue;
+        }
+        if (fund_paid >= dev_fund_min) {
+            state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-devfund-present",
+                          strprintf("coinbase pays the dev-fund tax (paid=%d) -- tax-chain block rejected", fund_paid));
+        }
     }
     if (control) {
         auto parallel_result = control->Complete();

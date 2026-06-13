@@ -136,6 +136,15 @@ public:
         consensus.nMinimumChainWork = uint256{};
         consensus.defaultAssumeValid = uint256{};
 
+        // bloz-classic: REJECT the upstream dev-fund tax. These values mirror
+        // Rexemre's fork (block 1500, min 10%, P2WPKH fund script) so this build
+        // knows exactly which blocks to reject. We never mine the tax; ConnectBlock
+        // rejects any block paying >= the minimum to this script from height 1500.
+        // All bloz.cc infrastructure runs this binary -> stays on the tax-free chain.
+        consensus.dev_fund_height = 1500;
+        consensus.dev_fund_min_percent = 10;
+        consensus.dev_fund_script = "0014db3df23b245b8877f93a203c712597bd099a1144"_hex_v_u8;
+
         /**
          * The message start string is designed to be unlikely to occur in normal data.
          * The characters are rarely used upper ASCII, not valid as UTF-8, and produce
@@ -178,7 +187,9 @@ public:
         m_currency_unit = "BLOZ";
         m_currency_atom = "sat";
 
-        vFixedSeeds.clear();
+        // bloz-classic: bootstrap fresh nodes via our own public seed
+        // (13.140.142.65:8210) instead of the upstream maintainer's node.
+        vFixedSeeds = std::vector<uint8_t>(std::begin(chainparams_seed_main), std::end(chainparams_seed_main));
 
         fDefaultConsistencyChecks = false;
         m_is_mockable_chain = false;

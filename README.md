@@ -12,9 +12,11 @@
 > "dev fund" was added, and the consensus our mainnet actually launched on.
 >
 > If you want to keep mining the chain Block Zero was launched as, build from
-> this branch. At block 1500 the chain splits; the public infrastructure under
-> [bloz.cc](https://bloz.cc) (pool, explorer, seed node, wallet) stays on
-> this consensus and will not enforce the dev-fund rule.
+> this branch. From **block 1500** this build **actively rejects** any block
+> that pays the dev-fund tax — a clean, symmetric consensus split from the tax
+> chain (not just "we won't mine it"). The public infrastructure under
+> [bloz.cc](https://bloz.cc) (pool, explorer, seed node, wallet) runs this
+> binary and stays on the tax-free chain.
 >
 > Full write-up and evidence:
 > **[bitcointalk.org thread](https://bitcointalk.org/index.php?topic=5585432.msg66827452#msg66827452)**
@@ -120,7 +122,7 @@ cd blockzero-ops\scripts\testnet
 .\mine-testnet.ps1           # mine
 ```
 
-**Public seed:** `217.160.46.61:18210` · **Block explorer:** https://explorer.bloz.org
+**Block explorer:** https://explorer.bloz.org
 
 Full guide: [blockzero-docs/quickstart-mining.md](https://github.com/Rexemre/blockzero-docs/blob/main/quickstart-mining.md)
 
@@ -152,7 +154,7 @@ See [doc/build-unix.md](doc/build-unix.md) and [doc/build-windows-msvc.md](doc/b
 
 ## Status
 
-- **Testnet — live.** Genesis mined, always-on public seed at `217.160.46.61:18210`, block explorer at [explorer.bloz.org](https://explorer.bloz.org), blocks mineable now.
+- **Testnet — live.** Genesis mined, block explorer at [explorer.bloz.org](https://explorer.bloz.org), blocks mineable now.
 - **Mainnet — genesis defined, launch pending.**
 - Upstream baseline: Bitcoin Core v31.0 — see [UPSTREAM.md](UPSTREAM.md).
 

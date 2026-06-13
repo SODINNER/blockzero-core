@@ -133,6 +133,18 @@ struct Params {
     uint256 defaultAssumeValid;
 
     /**
+     * bloz-classic: parameters of the dev-fund tax that upstream (Rexemre)
+     * added at block 1500. We do NOT mine it; from dev_fund_height on we
+     * REJECT any block whose coinbase pays >= dev_fund_min_percent of the
+     * subsidy to dev_fund_script. Mirrors upstream's threshold so the two
+     * chains split cleanly. Inactive while dev_fund_script is empty or
+     * dev_fund_height is in the far future.
+     */
+    int dev_fund_height{std::numeric_limits<int>::max()};
+    int dev_fund_min_percent{0};
+    std::vector<uint8_t> dev_fund_script{};
+
+    /**
      * If true, witness commitments contain a payload equal to a Bitcoin Script solution
      * to the signet challenge. See BIP325.
      */
